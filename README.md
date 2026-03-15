@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 GrindSync
+**Elevate Your Grind. Sync Your Progress.**
 
-## Getting Started
+GrindSync is a "Proof of Progress" social platform designed for developers. It eliminates "tutorial hell" by automatically tracking your DSA performance (LeetCode) and project contributions (GitHub), allowing you to build in public and collaborate with like-minded developers.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## ✨ Key Features (Roadmap)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **🔄 Automatic Progress Sync:** Real-time stats from LeetCode (Solved problems) and GitHub (Commits/Activity).
+- **📈 Weighted Ranking:** Projects are ranked by a combination of community votes and actual coding activity.
+- **🤝 Contribution Marketplace:** List your projects and find contributors based on their verified tech stack and skill level.
+- **🛡️ Developer Identity:** A profile that acts as a living resume with verified "Proof of Work."
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Frontend:** Next.js 15 (App Router), React 19 (Compiler enabled), Tailwind CSS
+- **Backend:** Node.js, Next.js Server Actions
+- **Database:** MongoDB with Mongoose
+- **Authentication:** NextAuth.js (GitHub Provider)
+- **Real-time:** Socket.io (Planned for Phase 4)
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Prerequisites
+- Node.js 18+ 
+- MongoDB Atlas account
+- GitHub OAuth Credentials
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Installation
 
-## Deploy on Vercel
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/Classyvaibhav06/GrindSync.git](https://github.com/Classyvaibhav06/GrindSync.git)
+   cd GrindSync
+   
+   2. **Install dependencies:**
+   ```bash
+   npm install
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   3. **Run the server:**
+   ```bash
+   npm run dev

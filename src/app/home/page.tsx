@@ -17,7 +17,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 /* ── Types ──────────────────────────────────────────── */
 interface ChallengeStats { totalPoints: number; completedCount: number }
-interface GitHubStatus { hasUsername: boolean; committedToday?: boolean; commitCount?: number; streak?: number }
+interface GitHubStatus { hasUsername: boolean; githubUsername?: string; committedToday?: boolean; commitCount?: number; streak?: number }
 interface WakaData { totalSecondsToday?: number; error?: string }
 interface DsaDaily { title: string; difficulty: string; tags: string[]; acRate: number; leetcodeUrl: string; questionId: string }
 interface OnlineUser { _id: string; name: string; image?: string }
@@ -106,6 +106,21 @@ function KpiCard({ label, value, chip, chipColor, loading = false }: {
   );
 }
 
+/* ── Global Cache (Client-side) ───────────────────────── */
+let _dashboardCache: {
+  challengeStats?: ChallengeStats;
+  ghStatus?: GitHubStatus;
+  waka?: WakaData | null;
+  rank?: number | null;
+  onlineCount?: number;
+  dsaDaily?: DsaDaily | null;
+  challenges?: Challenge[];
+  recentActivity?: any[];
+  focusData?: { day: string; h: number; count: number }[];
+  weeklyCommits?: number;
+  lastFetched?: number;
+} | null = null;
+
 /* ══ Main Page ══════════════════════════════════════════ */
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -116,17 +131,18 @@ export default function HomePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeBar, setActiveBar] = useState(6); // default highlight today (index 6 = Sun placeholder)
 
-  /* Data state */
-  const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(null);
-  const [ghStatus, setGhStatus] = useState<GitHubStatus | null>(null);
-  const [waka, setWaka] = useState<WakaData | null>(null);
-  const [rank, setRank] = useState<number | null>(null);
-  const [onlineCount, setOnlineCount] = useState<number>(0);
-  const [dsaDaily, setDsaDaily] = useState<DsaDaily | null>(null);
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [focusData, setFocusData]   = useState<{ day: string; h: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  /* Data state (initialize from cache if available) */
+  const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(_dashboardCache?.challengeStats ?? null);
+  const [ghStatus, setGhStatus] = useState<GitHubStatus | null>(_dashboardCache?.ghStatus ?? null);
+  const [waka, setWaka] = useState<WakaData | null>(_dashboardCache?.waka ?? null);
+  const [rank, setRank] = useState<number | null>(_dashboardCache?.rank ?? null);
+  const [onlineCount, setOnlineCount] = useState<number>(_dashboardCache?.onlineCount ?? 0);
+  const [dsaDaily, setDsaDaily] = useState<DsaDaily | null>(_dashboardCache?.dsaDaily ?? null);
+  const [challenges, setChallenges] = useState<Challenge[]>(_dashboardCache?.challenges ?? []);
+  const [recentActivity, setRecentActivity] = useState<any[]>(_dashboardCache?.recentActivity ?? []);
+  const [focusData, setFocusData] = useState<{ day: string; h: number; count: number }[]>(_dashboardCache?.focusData ?? []);
+  const [weeklyCommits, setWeeklyCommits] = useState<number>(_dashboardCache?.weeklyCommits ?? 0);
+  const [loading, setLoading] = useState(!_dashboardCache);
 
   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -134,42 +150,109 @@ export default function HomePage() {
   /* Heartbeat + fetch data */
   const fetchAll = useCallback(async () => {
     if (!session?.user?.id) return;
-    // Heartbeat
+    
+    // Heartbeat every time we hit the page
     fetch("/api/users/heartbeat", { method: "POST" }).catch(() => {});
 
-    setLoading(true);
+    // Cache hit: valid for 60 seconds, but re-fetch if weeklyCommits looks stale (all zeros despite GitHub linked)
+    const now = Date.now();
+    const staleCommits = _dashboardCache?.weeklyCommits === 0 && _dashboardCache?.ghStatus?.hasUsername;
+    if (_dashboardCache && now - (_dashboardCache.lastFetched ?? 0) < 60000 && !staleCommits) {
+      setLoading(false);
+      return; 
+    }
+
+    if (!_dashboardCache) setLoading(true);
+    
+    // Temporary object to build the new cache
+    const newCache: typeof _dashboardCache = { lastFetched: Date.now() };
+
     await Promise.allSettled([
       // XP + completions
       fetch("/api/challenges/my-stats").then(r => r.json()).then(d => {
-        setChallengeStats({ totalPoints: d.totalPoints ?? 0, completedCount: d.completedCount ?? 0 });
-        setRecentActivity(d.recentCompletions?.slice(0, 3) ?? []);
+        const p = { totalPoints: d.totalPoints ?? 0, completedCount: d.completedCount ?? 0 };
+        const act = d.recentCompletions?.slice(0, 3) ?? [];
+        setChallengeStats(p); setRecentActivity(act);
+        newCache.challengeStats = p; newCache.recentActivity = act;
       }),
       // GitHub status
-      fetch("/api/github/commits").then(r => r.json()).then(d => setGhStatus(d)),
+      fetch("/api/github/commits").then(r => r.json()).then(d => {
+        setGhStatus(d); newCache.ghStatus = d;
+      }),
       // WakaTime
-      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => setWaka(d)),
+      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => {
+        setWaka(d); newCache.waka = d;
+      }),
       // Leaderboard rank
       fetch("/api/leaderboard").then(r => r.json()).then(d => {
         const idx = d.leaderboard?.findIndex((e: any) => e.id === session.user.id);
-        if (idx !== undefined && idx !== -1) setRank(idx + 1);
+        const rnk = (idx !== undefined && idx !== -1) ? idx + 1 : null;
+        setRank(rnk); newCache.rank = rnk;
       }),
       // Online devs
-      fetch("/api/users/heartbeat").then(r => r.json()).then(d => setOnlineCount((d.users?.length ?? 0) + 1)),
+      fetch("/api/users/heartbeat").then(r => r.json()).then(d => {
+        const count = (d.users?.length ?? 0) + 1;
+        setOnlineCount(count); newCache.onlineCount = count;
+      }),
       // Daily DSA
-      fetch("/api/dsa/daily").then(r => r.json()).then(d => setDsaDaily(d)),
+      fetch("/api/dsa/daily").then(r => r.json()).then(d => {
+        setDsaDaily(d); newCache.dsaDaily = d;
+      }),
       // Challenges list
-      fetch("/api/challenges").then(r => r.json()).then(d => setChallenges(d.challenges?.slice(0, 3) ?? [])),
+      fetch("/api/challenges").then(r => r.json()).then(d => {
+        const ch = d.challenges?.slice(0, 3) ?? [];
+        setChallenges(ch); newCache.challenges = ch;
+      }),
+      // Real weekly activity from GitHub contributions
+      fetch(`/api/github/contributions?userId=${session.user.id}`).then(r => r.json()).then(d => {
+        const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        // Flatten all days from weeks
+        const allDays: { date: string; count: number }[] = [];
+        if (d.weeks) {
+          for (const week of d.weeks) for (const day of week) allDays.push(day);
+        }
+        // Get last 7 calendar days (today = index 6)
+        const today = new Date();
+        const last7: { day: string; count: number }[] = [];
+        // Helper: format date as YYYY-MM-DD in LOCAL timezone (not UTC)
+        const localISO = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${dd}`;
+        };
+        for (let i = 6; i >= 0; i--) {
+          const d2 = new Date(today);
+          d2.setDate(today.getDate() - i);
+          const iso = localISO(d2);
+          const found = allDays.find(a => a.date === iso);
+          last7.push({ day: DAY_LABELS[d2.getDay()], count: found?.count ?? 0 });
+        }
+        const maxCount = Math.max(...last7.map(x => x.count), 1);
+        const fd = last7.map(x => ({
+          day: x.day,
+          count: x.count,
+          h: Math.max(4, Math.round((x.count / maxCount) * 100)), // minimum 4% height so bar is visible
+        }));
+        const total = last7.reduce((s, x) => s + x.count, 0);
+        setFocusData(fd); newCache.focusData = fd;
+        setWeeklyCommits(total); newCache.weeklyCommits = total;
+      }).catch(() => {
+        // If no GitHub linked, keep empty bars
+        const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const today = new Date().getDay();
+        const fd = Array.from({ length: 7 }, (_, i) => {
+          const dayIdx = (today - 6 + i + 7) % 7;
+          return { day: DAY_LABELS[dayIdx], count: 0, h: 4 };
+        });
+        setFocusData(fd); newCache.focusData = fd;
+        setWeeklyCommits(0); newCache.weeklyCommits = 0;
+      }),
     ]);
-    setLoading(false);
 
-    // Build focus bar data (last 7 days based on WakaTime — fallback to placeholder pattern)
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const today = new Date().getDay(); // 0=Sun
-    const ordered = [...days.slice(today === 0 ? 0 : today), ...days.slice(0, today === 0 ? 0 : today)];
-    // We don't have per-day WakaTime, so show generic ascending pattern + today full
-    const pattern = [20, 35, 50, 45, 65, 80, 100];
-    setFocusData(ordered.map((d, i) => ({ day: d, h: pattern[i] })));
-    setActiveBar(6); // last bar = today
+    setActiveBar(6);
+    _dashboardCache = newCache;
+    setLoading(false);
   }, [session?.user?.id]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -316,7 +399,15 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-5">
                 <div>
                   <h2 className="text-sm font-black text-[#e4e1e9]">Activity This Week</h2>
-                  <p className="text-[10px] text-[#6b7a99] mt-0.5">{solved} total challenges · {xp.toLocaleString()} XP</p>
+                  {loading ? (
+                    <div className="h-3 w-40 bg-white/[0.06] rounded-full animate-pulse mt-1" />
+                  ) : weeklyCommits > 0 ? (
+                    <p className="text-[10px] text-[#6b7a99] mt-0.5">
+                      <span className="text-emerald-400 font-black">{weeklyCommits}</span> commits · {ghStatus?.githubUsername ? `@${ghStatus.githubUsername}` : "this week"}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-[#6b7a99] mt-0.5">{solved} challenges · {xp.toLocaleString()} XP</p>
+                  )}
                 </div>
                 <Link href="/stats">
                   <span className="text-[11px] font-bold text-[#6b7a99] bg-white/[0.05] border border-white/[0.08] rounded-full px-3 py-1 hover:text-primary hover:border-primary/30 transition-colors">
@@ -325,22 +416,83 @@ export default function HomePage() {
                 </Link>
               </div>
               {/* Bars */}
-              <div className="flex items-end gap-1.5 sm:gap-2 h-36 sm:h-44">
-                {focusData.map((d, i) => {
-                  const isActive = i === activeBar;
-                  return (
-                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 group cursor-pointer"
-                      onMouseEnter={() => setActiveBar(i)} onMouseLeave={() => setActiveBar(6)}>
-                      <div className="w-full relative rounded-t-lg" style={{ height: `${d.h}%` }}>
-                        <div className="w-full h-full rounded-t-lg transition-all duration-200"
-                          style={{ background: isActive ? "linear-gradient(to top,rgba(37,71,244,.6),rgba(37,71,244,.9))" : "linear-gradient(to top,rgba(37,71,244,.12),rgba(37,71,244,.28))" }} />
-                        {isActive && <div className="absolute -top-px left-0 right-0 h-[3px] bg-primary rounded-full" style={{ boxShadow: "0 0 12px rgba(37,71,244,.9)" }} />}
+              {(() => {
+                const BAR_MAX_H = 148; // px, matches the container height minus day labels
+                const maxCount = Math.max(...focusData.map(d => d.count), 1);
+                return loading ? (
+                  <div className="flex items-end gap-2 h-44 pb-6">
+                    {[30, 55, 40, 72, 45, 88, 60].map((pct, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-2 justify-end h-full">
+                        <div className="w-full rounded-t-md animate-pulse bg-white/[0.08]" style={{ height: `${pct}%` }} />
+                        <div className="w-5 h-2 rounded bg-white/[0.05] animate-pulse" />
                       </div>
-                      <span className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-colors", isActive ? "text-primary" : "text-[#6b7a99]")}>{d.day}</span>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                ) : focusData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-44 gap-2 text-center">
+                    <IconBrandGithub size={28} className="text-[#6b7a99] opacity-30" />
+                    <p className="text-xs text-[#6b7a99]">Link GitHub in your profile to see commit activity here</p>
+                  </div>
+                ) : (
+                  <div className="flex items-end gap-2 pt-8 pb-0" style={{ height: "176px" }}>
+                    {focusData.map((d, i) => {
+                      const isActive = i === activeBar;
+                      const isToday = i === focusData.length - 1;
+                      // Always at least 6px for zero days, else proportional
+                      const barH = d.count === 0 ? 6 : Math.max(18, Math.round((d.count / maxCount) * BAR_MAX_H));
+                      return (
+                        <div
+                          key={d.day + i}
+                          className="flex-1 flex flex-col items-center justify-end cursor-pointer select-none group"
+                          style={{ height: `${BAR_MAX_H}px` }}
+                          onMouseEnter={() => setActiveBar(i)}
+                          onMouseLeave={() => setActiveBar(focusData.length - 1)}
+                        >
+                          {/* Tooltip */}
+                          <div className={cn(
+                            "mb-2 px-2 py-0.5 rounded-md text-[9px] font-black whitespace-nowrap transition-all duration-150 border",
+                            isActive ? "opacity-100 bg-[#111116] border-white/[0.12] text-[#e4e1e9] shadow-lg" : "opacity-0 pointer-events-none bg-transparent border-transparent text-transparent"
+                          )}>
+                            {d.count} commit{d.count !== 1 ? "s" : ""}
+                          </div>
+
+                          {/* Bar */}
+                          <div
+                            className="w-full rounded-t-md transition-all duration-200 relative overflow-hidden"
+                            style={{ height: `${barH}px` }}
+                          >
+                            {/* Background fill */}
+                            <div className="absolute inset-0 rounded-t-md" style={{
+                              background: isActive
+                                ? "linear-gradient(to top, #1d3bcc 0%, #3d5eff 100%)"
+                                : isToday
+                                  ? d.count > 0
+                                    ? "linear-gradient(to top, rgba(16,185,129,0.25) 0%, rgba(52,211,153,0.5) 100%)"
+                                    : "linear-gradient(to top, rgba(16,185,129,0.08) 0%, rgba(52,211,153,0.12) 100%)"
+                                  : d.count > 0
+                                    ? "linear-gradient(to top, rgba(37,71,244,0.25) 0%, rgba(99,120,255,0.55) 100%)"
+                                    : "rgba(255,255,255,0.04)"
+                            }} />
+                            {/* Top glow line */}
+                            {d.count > 0 && (
+                              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
+                                background: isActive ? "#6380ff" : isToday ? "rgba(52,211,153,0.7)" : "rgba(99,120,255,0.4)",
+                                boxShadow: isActive ? "0 0 8px #3d5eff" : "none"
+                              }} />
+                            )}
+                          </div>
+
+                          {/* Day label */}
+                          <span className={cn(
+                            "text-[9px] font-black uppercase tracking-widest mt-1.5 transition-colors",
+                            isActive ? "text-primary" : isToday ? "text-emerald-400" : "text-[#6b7a99]"
+                          )}>{d.day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Right column */}

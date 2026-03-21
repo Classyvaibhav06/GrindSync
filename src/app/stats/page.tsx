@@ -101,6 +101,14 @@ function SectionHead({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
+/* ── Global Cache (Client-side) ───────────────────────── */
+let _statsCache: {
+  [uid: string]: {
+    data: any;
+    timestamp: number;
+  };
+} = {};
+
 /* ── Main Page ──────────────────────────────────────── */
 export default function StatsPage() {
   const { data: session, status } = useSession();
@@ -122,34 +130,56 @@ export default function StatsPage() {
     if (!session?.user?.id) return;
 
     const uid = session.user.id;
+    
+    // Check cache (valid for 60 seconds)
+    const cached = _statsCache[uid];
+    if (cached && Date.now() - cached.timestamp < 60000) {
+      setChallengeStats(cached.data.challengeStats);
+      setGithubStatus(cached.data.githubStatus);
+      setWakaStats(cached.data.wakaStats);
+      setLeaderPos(cached.data.leaderPos);
+      setRepos(cached.data.repos);
+      setTopLangs(cached.data.topLangs);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
+    const data: any = {};
 
     Promise.allSettled([
       // Challenge stats
-      fetch("/api/challenges/my-stats").then(r => r.json()).then(d => setChallengeStats(d)),
+      fetch("/api/challenges/my-stats").then(r => r.json()).then(d => { setChallengeStats(d); data.challengeStats = d; }),
       // GitHub
-      fetch("/api/github/commits").then(r => r.json()).then(d => setGithubStatus(d)),
+      fetch("/api/github/commits").then(r => r.json()).then(d => { setGithubStatus(d); data.githubStatus = d; }),
       // WakaTime
-      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => setWakaStats(d)),
+      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => { setWakaStats(d); data.wakaStats = d; }),
       // Leaderboard position
       fetch("/api/leaderboard").then(r => r.json()).then(d => {
         const idx = d.leaderboard?.findIndex((e: any) => e.id === uid);
-        if (idx !== -1 && idx !== undefined) setLeaderPos({ rank: idx + 1, total: d.leaderboard.length });
+        if (idx !== -1 && idx !== undefined) {
+          const lpos = { rank: idx + 1, total: d.leaderboard.length };
+          setLeaderPos(lpos); data.leaderPos = lpos;
+        }
       }),
       // GitHub repos for language stats
       fetch(`/api/github/repos?userId=${uid}`).then(r => r.json()).then(d => {
         if (d.repos) {
-          setRepos(d.repos);
+          setRepos(d.repos); data.repos = d.repos;
           const counts: Record<string, number> = {};
           for (const r of d.repos) if (r.language) counts[r.language] = (counts[r.language] || 0) + 1;
           const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-          setTopLangs(sorted.map(([lang, count]) => ({
+          const tl = sorted.map(([lang, count]) => ({
             lang, count,
             repoPct: Math.round((count / d.repos.length) * 100),
-          })));
+          }));
+          setTopLangs(tl); data.topLangs = tl;
         }
       }),
-    ]).finally(() => setLoading(false));
+    ]).finally(() => {
+      _statsCache[uid] = { data, timestamp: Date.now() };
+      setLoading(false);
+    });
   }, [session]);
 
   if (status === "loading") return (

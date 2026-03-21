@@ -62,7 +62,10 @@ export async function GET(req: NextRequest) {
       return fetchPublicContributions(githubUsername);
     }
 
-    const to   = new Date();
+    // Add 1 day to `to` to safely encompass current day in ahead timezones (like IST)
+    const to = new Date();
+    to.setDate(to.getDate() + 1);
+    
     const from = new Date(to);
     from.setFullYear(from.getFullYear() - 1);
 
@@ -81,7 +84,7 @@ export async function GET(req: NextRequest) {
           to: to.toISOString(),
         },
       }),
-      next: { revalidate: 3600 }, // cache 1 hour
+      next: { revalidate: 60 }, // Reduced from 3600 (1hr) to 60s so today's contributions show instantly
     });
 
     if (!ghRes.ok) {

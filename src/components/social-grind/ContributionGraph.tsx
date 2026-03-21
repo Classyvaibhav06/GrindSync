@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { IconBrandGithub, IconFlame, IconLoader2 } from "@tabler/icons-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { IconBrandGithub, IconFlame, IconLoader2, IconX } from "@tabler/icons-react";
 
 /* ── Types ─────────────────────────────────────────── */
 interface ContributionDay {
@@ -63,13 +63,27 @@ interface Props {
 }
 
 /* ── Component ──────────────────────────────────────── */
+interface TooltipState {
+  x: number;
+  y: number;
+  date: string;   // "2026-03-22"
+  count: number;
+}
+
 export default function ContributionGraph({ userId, githubUsername }: Props) {
   const [weeks, setWeeks] = useState<ContributionDay[][]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Format "2026-03-22" → "Sunday, Mar 22, 2026"
+  const formatDate = (iso: string) => {
+    const d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "short", day: "numeric" });
+  };
 
   useEffect(() => {
     if (!userId || !githubUsername) return;
@@ -94,6 +108,26 @@ export default function ContributionGraph({ userId, githubUsername }: Props) {
       .catch(() => setError("Network error."))
       .finally(() => setLoading(false));
   }, [userId, githubUsername]);
+
+  // Auto-scroll to the rightmost (most recent) area on load
+  useEffect(() => {
+    if (weeks.length > 0 && !loading && containerRef.current) {
+      const scrollToRight = () => {
+        if (containerRef.current) {
+          // Scroll to maximum possible width smoothly
+          containerRef.current.scrollTo({
+            left: containerRef.current.scrollWidth + 1000,
+            behavior: "smooth"
+          });
+        }
+      };
+      // Try scrolling immediately, then again slightly later to guarantee
+      // that React has fully committed the DOM layout for the cells.
+      const t1 = setTimeout(scrollToRight, 50);
+      const t2 = setTimeout(scrollToRight, 300);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [weeks, loading]);
 
   /* ── Month label positions ──────────────────────────── */
   const monthLabels = useMemo(() => {
@@ -167,19 +201,46 @@ export default function ContributionGraph({ userId, githubUsername }: Props) {
           <div
             ref={containerRef}
             className="relative heatmap-scroll pb-1"
-            onMouseLeave={() => setTooltip(null)}
+            onMouseLeave={() => {
+              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+              setTooltip(null);
+            }}
           >
             {/* Tooltip */}
             {tooltip && (
               <div
-                className="pointer-events-none absolute z-50 px-2.5 py-1.5 rounded-lg bg-card border border-border/80 shadow-xl text-[11px] font-bold whitespace-nowrap"
-                style={{ left: tooltip.x, top: tooltip.y - 36, transform: "translateX(-50%)" }}
+                className="absolute z-[9999] w-max rounded-lg shadow-2xl transition-all duration-200 pointer-events-none"
+                style={{
+                  left: Math.min(Math.max(tooltip.x, 60), (containerRef.current?.scrollWidth || 1000) - 60),
+                  // Very tight offset for the new tiny footprint
+                  top: tooltip.y - 42,
+                  transform: "translateX(-50%)",
+                  background: "rgba(17,17,22,0.7)", // Decreased transparency
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                }}
               >
-                {tooltip.text}
+                {/* Arrow */}
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-[4px] w-[8px] h-[8px] rotate-45"
+                  style={{ background: "rgba(17,17,22,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderTop: "none", borderLeft: "none", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }} />
+
+                <div className="px-2.5 py-1.5 flex flex-col items-center">
+                  <p className="text-[10px] font-bold text-[#e4e1e9] leading-tight flex items-center gap-1">
+                    {tooltip.count > 0 ? (
+                      <>{tooltip.count} contribution{tooltip.count !== 1 && "s"}</>
+                    ) : (
+                      "No contributions"
+                    )}
+                  </p>
+                  <p className="text-[8px] text-[#6b7a99] font-medium tracking-tight whitespace-nowrap">
+                    {formatDate(tooltip.date)}
+                  </p>
+                </div>
               </div>
             )}
 
-            <div className="flex gap-1 min-w-max">
+            <div className="flex gap-1 min-w-max pr-8">
               {/* Day-of-week labels */}
               <div className="flex flex-col justify-around pb-5 pr-1" style={{ gap: "3px" }}>
                 {Array.from({ length: 7 }).map((_, dayIdx) => (
@@ -212,26 +273,38 @@ export default function ContributionGraph({ userId, githubUsername }: Props) {
                 <div className="flex gap-[3px]">
                   {weeks.map((week, wIdx) => (
                     <div key={wIdx} className="flex flex-col gap-[3px]">
-                      {week.map((day) => (
-                        <div
-                          key={day.date}
-                          className="w-[11px] h-[11px] rounded-[3px] cursor-pointer transition-transform hover:scale-125"
-                          style={{
-                            backgroundColor: LEVEL_COLORS[day.level],
-                            boxShadow: LEVEL_GLOW[day.level] || "none",
-                          }}
-                          onMouseEnter={(e) => {
-                            const rect = (e.target as HTMLElement).getBoundingClientRect();
-                            const parentRect = containerRef.current?.getBoundingClientRect();
-                            if (!parentRect) return;
-                            setTooltip({
-                              x: rect.left - parentRect.left + rect.width / 2,
-                              y: rect.top - parentRect.top,
-                              text: `${day.count} contribution${day.count !== 1 ? "s" : ""} on ${day.date}`,
-                            });
-                          }}
-                        />
-                      ))}
+                      {week.map((day) => {
+                        return (
+                          <div
+                            key={day.date}
+                            data-dot="true"
+                            className="w-[11px] h-[11px] rounded-[3px] cursor-pointer transition-all duration-150 hover:scale-125 relative"
+                            style={{
+                              backgroundColor: LEVEL_COLORS[day.level],
+                              boxShadow: LEVEL_GLOW[day.level] || "none",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                              
+                              const target = e.target as HTMLElement;
+                              hoverTimeoutRef.current = setTimeout(() => {
+                                const rect = target.getBoundingClientRect();
+                                const parentRect = containerRef.current?.getBoundingClientRect();
+                                if (!parentRect || !containerRef.current) return;
+                                setTooltip({
+                                  x: rect.left - parentRect.left + containerRef.current.scrollLeft + rect.width / 2,
+                                  y: rect.top - parentRect.top + containerRef.current.scrollTop,
+                                  date: day.date,
+                                  count: day.count,
+                                });
+                              }, 200);
+                            }}
+                            onMouseLeave={() => {
+                              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   ))}
                 </div>

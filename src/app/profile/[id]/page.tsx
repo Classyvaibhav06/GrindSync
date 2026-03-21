@@ -249,6 +249,17 @@ const TIERS = [
 ];
 function getTier(xp: number) { return TIERS.find(t => xp >= t.min)!; }
 
+/* ── Global Cache (Client-side) ───────────────────────── */
+let _profileCache: {
+  [id: string]: {
+    data: any;
+    repos: any[];
+    reposGhUsername: string | null;
+    reposError: string | null;
+    timestamp: number;
+  };
+} = {};
+
 /* ─── Main Profile Page ───────────────────────────────── */
 export default function ProfilePage() {
   const { id } = useParams();
@@ -284,7 +295,11 @@ export default function ProfilePage() {
         const res = await fetch(`/api/users/${profile.useProfile.id}/avatar`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: base64 }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
-        setProfile((prev: any) => ({ ...prev, useProfile: { ...prev.useProfile, image: base64 } }));
+        setProfile((prev: any) => {
+          const newProfile = { ...prev, useProfile: { ...prev.useProfile, image: base64 } };
+          if (typeof id === 'string' && _profileCache[id]) _profileCache[id].data = newProfile; // update cache
+          return newProfile;
+        });
       } catch (err: any) { alert(err.message); } finally { setAvatarUploading(false); }
     };
     reader.readAsDataURL(file);
@@ -292,25 +307,53 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!id) return;
+    const profileId = Array.isArray(id) ? id[0] : id;
+
+    // Check cache (valid for 60 seconds)
+    const cached = _profileCache[profileId];
+    if (cached && Date.now() - cached.timestamp < 60000) {
+      setProfile(cached.data);
+      setRepos(cached.repos);
+      setReposGhUsername(cached.reposGhUsername);
+      setReposError(cached.reposError);
+      setLoading(false);
+      return;
+    }
+
     async function fetchProfile() {
+      setLoading(true);
       try {
-        const res = await fetch(`/api/users/${id}`);
+        const res = await fetch(`/api/users/${profileId}`);
         const data = await res.json();
         if (res.ok) {
           setProfile(data);
+          let rDataObj = { repos: [], githubUsername: null, error: null as string | null };
           if (data.useProfile?.githubUsername) {
             setReposLoading(true);
             try {
-              const rRes = await fetch(`/api/github/repos?userId=${id}`);
+              const rRes = await fetch(`/api/github/repos?userId=${profileId}`);
               const rData = await rRes.json();
-              setRepos(rData.repos || []);
-              setReposGhUsername(rData.githubUsername || null);
+              if (rData.repos) rDataObj.repos = rData.repos;
+              if (rData.githubUsername) rDataObj.githubUsername = rData.githubUsername;
               if (rData.error && rData.error !== "NO_GITHUB") {
-                setReposError(rData.error === "GITHUB_RATE_LIMIT" ? "GitHub API rate limit reached." : rData.error === "GITHUB_NOT_FOUND" ? "GitHub username not found." : "Could not load repos.");
+                rDataObj.error = rData.error === "GITHUB_RATE_LIMIT" ? "GitHub API rate limit reached." : rData.error === "GITHUB_NOT_FOUND" ? "GitHub username not found." : "Could not load repos.";
               }
-            } catch { setReposError("Network error."); } finally { setReposLoading(false); }
+            } catch { rDataObj.error = "Network error."; } finally { setReposLoading(false); }
           }
-        } else setError(data.error || "Failed to load profile");
+          setRepos(rDataObj.repos);
+          setReposGhUsername(rDataObj.githubUsername);
+          setReposError(rDataObj.error);
+          
+          _profileCache[profileId] = {
+            data,
+            repos: rDataObj.repos,
+            reposGhUsername: rDataObj.githubUsername,
+            reposError: rDataObj.error,
+            timestamp: Date.now()
+          };
+        } else {
+          setError(data.error || "Failed to load profile");
+        }
       } catch { setError("Network error"); } finally { setLoading(false); }
     }
     fetchProfile();

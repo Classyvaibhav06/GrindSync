@@ -22,6 +22,8 @@ GrindSync is a "Proof of Progress" social platform designed for developers. It e
 
 ---
 
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites

@@ -1,223 +1,540 @@
 "use client";
-
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  IconLayoutDashboard, IconTrophy, IconUsers, IconChartBar,
+  IconSettings, IconSearch, IconPlayerPlay, IconBolt, IconLogout,
+  IconMedal, IconMessageCircle, IconFlame, IconArrowUpRight, IconChevronRight,
+  IconMenu2, IconX, IconCode, IconBrandGithub, IconLoader2,
+  IconExternalLink, IconCheck, IconClock,
+} from "@tabler/icons-react";
+import { NotificationBell } from "@/components/social-grind/NotificationBell";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import Image from "next/image";
+import { cn } from "@/lib/utils";
+import Leaderboard from "@/components/social-grind/Leaderboard";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 
-export default function HomePage() {
-  // Mock User Data
-  const user = {
-    name: "Vaibhav Ghoshi",
-    email: "vaibhav@gmail.com",
-    image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Vaibhav" // Placeholder for Google photo
-  };
+/* ── Types ──────────────────────────────────────────── */
+interface ChallengeStats { totalPoints: number; completedCount: number }
+interface GitHubStatus { hasUsername: boolean; committedToday?: boolean; commitCount?: number; streak?: number }
+interface WakaData { totalSecondsToday?: number; error?: string }
+interface DsaDaily { title: string; difficulty: string; tags: string[]; acRate: number; leetcodeUrl: string; questionId: string }
+interface OnlineUser { _id: string; name: string; image?: string }
+interface Challenge { id: string; title: string; icon: string; points: number; difficulty: string }
 
+/* ── Helpers ─────────────────────────────────────────── */
+function fmtTime(secs: number) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+function getHour() { return new Date().getHours(); }
+function greet(name: string) {
+  const h = getHour();
+  const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  return `${g}, ${name}`;
+}
+
+/* ── Live avatar ──────────────────────────────────────── */
+function UserAvatar({ userId, sessionImage, userName }: { userId: string; sessionImage?: string | null; userName: string }) {
+  const [src, setSrc] = useState<string | null>(sessionImage ?? null);
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/users/${userId}/avatar`).then(r => r.json()).then(d => { if (d.image) setSrc(d.image); }).catch(() => {});
+  }, [userId]);
   return (
-    <div className="flex min-h-screen bg-black">
-      {/* Sidebar - Optional but adds to 'Command Center' feel */}
-      <aside className="hidden lg:flex flex-col w-64 border-r border-white/5 p-6 space-y-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center">
-            <span className="text-zinc-100 font-bold">G</span>
-          </div>
-          <span className="font-bold text-zinc-100 tracking-tight">Social Grind</span>
-        </div>
-        
-        <nav className="space-y-2">
-          <NavItem icon={<DashboardIcon />} label="Dashboard" active />
-          <NavItem icon={<ChallengesIcon />} label="Challenges" />
-          <NavItem icon={<NetworkIcon />} label="Social Network" />
-          <NavItem icon={<StatsIcon />} label="Analytics" />
-          <NavItem icon={<SettingsIcon />} label="Settings" />
-        </nav>
-
-        <div className="mt-auto p-4 rounded-3xl bg-white/5 border border-white/5">
-          <p className="text-xs text-zinc-500 mb-2 font-sans uppercase tracking-widest">Your Rank</p>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-neon/20 flex items-center justify-center border border-brand-neon/30 text-brand-neon font-bold">#42</div>
-            <div>
-              <p className="text-zinc-100 font-bold text-sm">Platinum Tier</p>
-              <p className="text-zinc-500 text-xs font-sans">Top 5% this month</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <div className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <header className="h-20 border-b border-white/5 px-8 flex items-center justify-between glass sticky top-0 z-30">
-          <div className="lg:hidden flex items-center gap-2">
-             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-blue to-brand-purple flex items-center justify-center" />
-             <span className="font-bold text-zinc-100 tracking-tight">Grind</span>
-          </div>
-          <div className="hidden md:flex flex-1 max-w-md ml-8">
-            <div className="relative w-full">
-              <input 
-                type="text" 
-                placeholder="Search challenges, visionaries..." 
-                className="w-full bg-white/5 border border-white/5 rounded-full px-12 py-2 text-sm text-zinc-300 focus:outline-none focus:border-brand-blue/30 transition-all font-sans"
-              />
-              <svg className="absolute left-4 top-2.5 w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button className="p-2 rounded-full hover:bg-white/5 text-zinc-400">
-               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            </button>
-            <div className="flex items-center gap-3 pl-4 border-l border-white/5">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-zinc-100">{user.name}</p>
-                <p className="text-[10px] text-zinc-500 font-sans">{user.email}</p>
-              </div>
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-brand-blue/30 shadow-lg shadow-brand-blue/10">
-                <img 
-                  src={user.image} 
-                  alt={user.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Dashboard Content */}
-        <main className="p-8 space-y-8 overflow-y-auto">
-          {/* Welcome Greeting */}
-          <div>
-            <h2 className="text-3xl font-black text-zinc-100 mb-2">Command Center</h2>
-            <p className="text-zinc-500 font-sans">Ready to dominate your goals today, {user.name.split(' ')[0]}?</p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatsCard label="Deep Work Time" value="4h 32m" trend="+12%" color="blue" />
-            <StatsCard label="Community Karma" value="1,240 XP" trend="+450" color="purple" />
-            <StatsCard label="Active Streaks" value="14 Days" trend="Peak" color="neon" />
-            <StatsCard label="Ranking Score" value="Top 5%" trend="+2.4%" color="blue" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Feed Area */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="glass rounded-[32px] p-8 border-white/5">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-bold text-zinc-100">Focus Progress</h3>
-                  <button className="text-xs text-brand-blue font-bold uppercase tracking-wider">Configure Goals</button>
-                </div>
-                <div className="h-64 flex items-end gap-2 px-2">
-                   {[40, 70, 45, 90, 65, 80, 55].map((h, i) => (
-                     <div key={i} className="flex-1 flex flex-col items-center gap-4 group">
-                        <div className="w-full bg-brand-blue/20 rounded-t-xl transition-all group-hover:bg-brand-blue/40 relative" style={{ height: `${h}%` }}>
-                          <div className={`absolute top-0 w-full h-1 bg-brand-blue ${h > 75 ? 'neon-glow-blue' : ''}`} />
-                        </div>
-                        <span className="text-[10px] text-zinc-600 font-sans">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}</span>
-                     </div>
-                   ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold text-zinc-100 px-2">Community Activity</h3>
-                <ActivityCard user="Emily Chen" action="started a 'No Distractions' sprint" time="2m ago" />
-                <ActivityCard user="Marcus J." action="reached level 40 in Backend Mastery" time="15m ago" />
-                <ActivityCard user="Sarah Blake" action="contributed to the Global Leaderboard" time="1h ago" />
-              </div>
-            </div>
-
-            {/* Sidebar Cards */}
-            <div className="space-y-6">
-              <div className="p-1 rounded-[32px] bg-gradient-to-tr from-brand-blue to-brand-purple">
-                <div className="bg-black rounded-[31px] p-6">
-                  <h3 className="text-lg font-bold text-zinc-100 mb-4">Start Quick Grind</h3>
-                  <p className="text-zinc-500 text-sm mb-6 font-sans">Instant 50min focus session with the community.</p>
-                  <button className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-purple text-white font-bold hover:scale-[1.02] transition-transform shadow-lg shadow-brand-blue/20">
-                    Jump In
-                  </button>
-                </div>
-              </div>
-
-              <div className="glass rounded-[32px] p-6 border-white/5">
-                <h3 className="text-lg font-bold text-zinc-100 mb-4">Trending Visionaries</h3>
-                <div className="space-y-4">
-                  <UserMiniCard name="Alex Rivera" role="Founder @ Apex" />
-                  <UserMiniCard name="Sofia Gao" role="Senior Architect" />
-                  <UserMiniCard name="Leo Knight" role="Product Designer" />
-                </div>
-                <button className="w-full mt-6 py-3 rounded-xl border border-white/10 text-white text-sm font-medium hover:bg-white/5 transition-all font-sans">
-                  Browse All
-                </button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
+    <Avatar className="w-8 h-8 sm:w-9 sm:h-9 ring-2 ring-primary/30 ring-offset-2 ring-offset-[#0e0e13] hover:ring-primary/60 transition-all cursor-pointer flex-shrink-0">
+      <AvatarImage src={src ?? undefined} />
+      <AvatarFallback className="bg-primary/20 text-primary text-xs font-black">{userName.substring(0, 2).toUpperCase()}</AvatarFallback>
+    </Avatar>
   );
 }
 
-function NavItem({ icon, label, active = false }: { icon: React.ReactNode, label: string, active?: boolean }) {
-  return (
-    <Link href="#" className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${active ? 'bg-brand-blue/10 text-brand-blue' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}>
-      {icon}
-      <span className="text-sm font-bold">{label}</span>
-    </Link>
-  );
-}
+const NAV_ITEMS = [
+  { icon: IconLayoutDashboard, label: "Dashboard",  href: "/home" },
+  { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
+  { icon: IconMessageCircle,    label: "Chat",       href: "/chat" },
+  { icon: IconUsers,            label: "Discover",   href: "/users" },
+  { icon: IconChartBar,         label: "Stats",      href: "/stats" },
+  { icon: IconSettings,         label: "Settings",   href: "#" },
+];
+const MOBILE_NAV = [
+  { icon: IconLayoutDashboard, label: "Home",       href: "/home" },
+  { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
+  { icon: IconChartBar,         label: "Stats",      href: "/stats" },
+  { icon: IconUsers,            label: "Discover",   href: "/users" },
+];
 
-function StatsCard({ label, value, trend, color }: { label: string, value: string, trend: string, color: 'blue' | 'purple' | 'neon' }) {
-  const colorMap = {
-    blue: 'text-brand-blue bg-brand-blue/10',
-    purple: 'text-brand-purple bg-brand-purple/10',
-    neon: 'text-brand-neon bg-brand-neon/10'
-  };
+/* ── Tier helper ─────────────────────────────────────── */
+const TIERS = [
+  { min: 5000, label: "Legend",   color: "#f59e0b" },
+  { min: 2000, label: "Diamond",  color: "#22d3ee" },
+  { min: 800,  label: "Platinum", color: "#a78bfa" },
+  { min: 350,  label: "Gold",     color: "#fbbf24" },
+  { min: 0,    label: "Grinder",  color: "#64748b" },
+];
+function getTier(xp: number) { return TIERS.find(t => xp >= t.min)!; }
 
+/* ── KPI Card ─────────────────────────────────────────── */
+function KpiCard({ label, value, chip, chipColor, loading = false }: {
+  label: string; value: string; chip: string;
+  chipColor: "blue" | "green" | "orange" | "purple"; loading?: boolean;
+}) {
+  const cls = {
+    blue:   "bg-primary/70 text-primary bg-primary/10 border-primary/20",
+    green:  "bg-emerald-500/70 text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    orange: "bg-orange-400/70 text-orange-400 bg-orange-400/10 border-orange-400/20",
+    purple: "bg-violet-500/70 text-violet-400 bg-violet-500/10 border-violet-500/20",
+  }[chipColor];
+  const [bar, ...rest] = cls.split(" ");
   return (
-    <div className="glass p-6 rounded-[28px] border-white/5">
-      <p className="text-xs text-zinc-500 font-medium font-sans mb-3">{label}</p>
-      <div className="flex items-end justify-between">
-        <h4 className="text-2xl font-black text-zinc-100">{value}</h4>
-        <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider ${colorMap[color]}`}>
-          {trend}
+    <div className="bg-[#1b1b20] rounded-xl p-3 sm:p-4 relative overflow-hidden hover:bg-[#1f1f26] transition-colors group">
+      <div className={cn("absolute left-0 top-3 bottom-3 w-[2px] rounded-r-full", bar)} />
+      <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-[#6b7a99] mb-2 pl-2">{label}</p>
+      <div className="pl-2 flex flex-col sm:flex-row sm:items-end justify-between gap-1.5 sm:gap-2">
+        {loading ? (
+          <div className="h-7 w-20 bg-white/[0.07] rounded-lg animate-pulse" />
+        ) : (
+          <span className="text-lg sm:text-2xl font-black text-[#e4e1e9] tabular-nums tracking-tight leading-none">{value}</span>
+        )}
+        <span className={cn("text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full uppercase tracking-wider self-start sm:self-auto whitespace-nowrap border", rest.join(" "))}>
+          {chip}
         </span>
       </div>
     </div>
   );
 }
 
-function ActivityCard({ user, action, time }: { user: string, action: string, time: string }) {
+/* ══ Main Page ══════════════════════════════════════════ */
+export default function HomePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  /* UI state */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeBar, setActiveBar] = useState(6); // default highlight today (index 6 = Sun placeholder)
+
+  /* Data state */
+  const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(null);
+  const [ghStatus, setGhStatus] = useState<GitHubStatus | null>(null);
+  const [waka, setWaka] = useState<WakaData | null>(null);
+  const [rank, setRank] = useState<number | null>(null);
+  const [onlineCount, setOnlineCount] = useState<number>(0);
+  const [dsaDaily, setDsaDaily] = useState<DsaDaily | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [focusData, setFocusData]   = useState<{ day: string; h: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
+
+  /* Heartbeat + fetch data */
+  const fetchAll = useCallback(async () => {
+    if (!session?.user?.id) return;
+    // Heartbeat
+    fetch("/api/users/heartbeat", { method: "POST" }).catch(() => {});
+
+    setLoading(true);
+    await Promise.allSettled([
+      // XP + completions
+      fetch("/api/challenges/my-stats").then(r => r.json()).then(d => {
+        setChallengeStats({ totalPoints: d.totalPoints ?? 0, completedCount: d.completedCount ?? 0 });
+        setRecentActivity(d.recentCompletions?.slice(0, 3) ?? []);
+      }),
+      // GitHub status
+      fetch("/api/github/commits").then(r => r.json()).then(d => setGhStatus(d)),
+      // WakaTime
+      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => setWaka(d)),
+      // Leaderboard rank
+      fetch("/api/leaderboard").then(r => r.json()).then(d => {
+        const idx = d.leaderboard?.findIndex((e: any) => e.id === session.user.id);
+        if (idx !== undefined && idx !== -1) setRank(idx + 1);
+      }),
+      // Online devs
+      fetch("/api/users/heartbeat").then(r => r.json()).then(d => setOnlineCount((d.users?.length ?? 0) + 1)),
+      // Daily DSA
+      fetch("/api/dsa/daily").then(r => r.json()).then(d => setDsaDaily(d)),
+      // Challenges list
+      fetch("/api/challenges").then(r => r.json()).then(d => setChallenges(d.challenges?.slice(0, 3) ?? [])),
+    ]);
+    setLoading(false);
+
+    // Build focus bar data (last 7 days based on WakaTime — fallback to placeholder pattern)
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const today = new Date().getDay(); // 0=Sun
+    const ordered = [...days.slice(today === 0 ? 0 : today), ...days.slice(0, today === 0 ? 0 : today)];
+    // We don't have per-day WakaTime, so show generic ascending pattern + today full
+    const pattern = [20, 35, 50, 45, 65, 80, 100];
+    setFocusData(ordered.map((d, i) => ({ day: d, h: pattern[i] })));
+    setActiveBar(6); // last bar = today
+  }, [session?.user?.id]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Heartbeat every 60s
+  useEffect(() => {
+    const t = setInterval(() => { fetch("/api/users/heartbeat", { method: "POST" }).catch(() => {}); }, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (status === "loading") return (
+    <div className="min-h-screen bg-[#0e0e13] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+  if (!session) return null;
+
+  const firstName = session.user?.name?.split(" ")[0] || "Dev";
+  const userId    = session.user?.id;
+  const userName  = session.user?.name || "User";
+  const userImage = session.user?.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userName}`;
+
+  const xp      = challengeStats?.totalPoints ?? 0;
+  const solved  = challengeStats?.completedCount ?? 0;
+  const streak  = ghStatus?.streak ?? 0;
+  const wakaOk  = waka && !waka.error && waka.totalSecondsToday !== undefined;
+  const tier    = getTier(xp);
+
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/5 transition-all">
-      <div className="w-10 h-10 rounded-full bg-zinc-800" />
-      <div className="flex-1">
-        <p className="text-sm text-zinc-100 font-medium">
-          <span className="font-bold">{user}</span> {action}
-        </p>
-        <p className="text-[10px] text-zinc-600 uppercase tracking-widest mt-1">{time}</p>
+    <div className="flex min-h-screen bg-[#0e0e13] text-[#e4e1e9]">
+
+      {/* Overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />}
+
+      {/* ── Sidebar ───────────────────────────────────── */}
+      <aside className={cn(
+        "fixed lg:sticky top-0 h-screen z-50 flex-shrink-0 flex flex-col",
+        "bg-[#0e0e13] border-r border-white/[0.06] w-64 lg:w-56 xl:w-60",
+        "py-5 px-3 lg:px-4 transition-transform duration-300 ease-in-out",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        <div className="flex items-center justify-between px-2 mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/30">
+              <span className="font-black text-white text-sm">SG</span>
+            </div>
+            <span className="font-black text-base tracking-tighter">GrindSync</span>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-[#6b7a99] hover:text-[#e4e1e9] no-min-size p-1"><IconX size={18} /></button>
+        </div>
+
+        <nav className="flex-1 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map(({ icon: Icon, label, href }) => {
+            const isActive = pathname === href;
+            return (
+              <Link key={label} href={href} onClick={() => setSidebarOpen(false)}>
+                <div className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group",
+                  isActive ? "bg-primary text-white shadow-md shadow-primary/30" : "text-[#6b7a99] hover:text-[#e4e1e9] hover:bg-white/[0.05]")}>
+                  <Icon size={18} className="flex-shrink-0 transition-transform group-hover:scale-110" />
+                  <span className="text-[13px] font-bold tracking-tight">{label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="space-y-2 pt-4">
+          {/* Tier card */}
+          <div className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-[#6b7a99] mb-2">Your Tier</p>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: `${tier.color}20`, border: `1px solid ${tier.color}40` }}>
+                <IconTrophy size={14} style={{ color: tier.color }} />
+              </div>
+              <div>
+                <p className="text-xs font-bold" style={{ color: tier.color }}>{tier.label}</p>
+                <p className="text-[9px] text-[#6b7a99]">{xp.toLocaleString()} XP{rank ? ` · #${rank}` : ""}</p>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => signOut({ callbackUrl: "/" })}
+            className="w-full flex items-center gap-3 p-2.5 rounded-xl text-[#6b7a99] hover:text-red-400 hover:bg-red-500/[0.08] transition-all group">
+            <IconLogout size={18} className="flex-shrink-0 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-bold">Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ──────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0">
+
+        {/* Header */}
+        <header className="h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 border-b border-white/[0.04] bg-[#0e0e13]/80 backdrop-blur-xl sticky top-0 z-30 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-[#6b7a99] hover:text-[#e4e1e9] transition-colors flex-shrink-0">
+              <IconMenu2 size={20} />
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm sm:text-base font-bold text-[#e4e1e9] truncate hidden xs:block">{greet(firstName)}</span>
+              {streak > 0 && (
+                <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-1 flex-shrink-0">
+                  <IconFlame size={11} className="text-orange-400" />
+                  <span className="text-[10px] sm:text-[11px] font-black text-emerald-400 whitespace-nowrap">{streak}d streak</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            <div className="hidden md:flex items-center gap-2 bg-white/[0.04] border border-white/[0.07] rounded-full px-3 sm:px-4 py-2 cursor-pointer hover:border-primary/30 transition-all group" onClick={() => router.push("/users")}>
+              <IconSearch size={13} className="text-[#6b7a99] group-hover:text-primary transition-colors" />
+              <span className="text-[12px] sm:text-[13px] text-[#6b7a99] font-medium w-28 sm:w-40">Search devs…</span>
+            </div>
+            <NotificationBell />
+            <Link href={`/profile/${userId}`}>
+              <UserAvatar userId={userId} sessionImage={userImage} userName={userName} />
+            </Link>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+
+          {/* ── KPI Row — real data ────────────────────── */}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+            <KpiCard label="XP Earned"  value={loading ? "…" : xp.toLocaleString()}
+              chip={rank ? `Rank #${rank}` : "Tier: " + tier.label} chipColor="blue" loading={loading} />
+            <KpiCard label="Challenges" value={loading ? "…" : String(solved)}
+              chip="Completed" chipColor="orange" loading={loading} />
+            <KpiCard label="GitHub Streak" value={loading ? "…" : `${streak} days`}
+              chip={ghStatus?.committedToday ? "✅ Today done" : ghStatus?.hasUsername ? "No push today" : "Link GitHub"}
+              chipColor="green" loading={loading} />
+            <KpiCard label="Deep Work"
+              value={loading ? "…" : wakaOk ? fmtTime(waka!.totalSecondsToday!) : "—"}
+              chip={wakaOk ? "Today via WakaTime" : waka?.error === "NO_WAKATIME_KEY" ? "Link WakaTime" : "No data"}
+              chipColor="purple" loading={loading && !waka} />
+          </div>
+
+          {/* ── Focus chart + Right Column ───────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Focus Chart */}
+            <div className="lg:col-span-2 bg-[#1b1b20] rounded-2xl p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-sm font-black text-[#e4e1e9]">Activity This Week</h2>
+                  <p className="text-[10px] text-[#6b7a99] mt-0.5">{solved} total challenges · {xp.toLocaleString()} XP</p>
+                </div>
+                <Link href="/stats">
+                  <span className="text-[11px] font-bold text-[#6b7a99] bg-white/[0.05] border border-white/[0.08] rounded-full px-3 py-1 hover:text-primary hover:border-primary/30 transition-colors">
+                    Full Stats →
+                  </span>
+                </Link>
+              </div>
+              {/* Bars */}
+              <div className="flex items-end gap-1.5 sm:gap-2 h-36 sm:h-44">
+                {focusData.map((d, i) => {
+                  const isActive = i === activeBar;
+                  return (
+                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5 sm:gap-2 group cursor-pointer"
+                      onMouseEnter={() => setActiveBar(i)} onMouseLeave={() => setActiveBar(6)}>
+                      <div className="w-full relative rounded-t-lg" style={{ height: `${d.h}%` }}>
+                        <div className="w-full h-full rounded-t-lg transition-all duration-200"
+                          style={{ background: isActive ? "linear-gradient(to top,rgba(37,71,244,.6),rgba(37,71,244,.9))" : "linear-gradient(to top,rgba(37,71,244,.12),rgba(37,71,244,.28))" }} />
+                        {isActive && <div className="absolute -top-px left-0 right-0 h-[3px] bg-primary rounded-full" style={{ boxShadow: "0 0 12px rgba(37,71,244,.9)" }} />}
+                      </div>
+                      <span className={cn("text-[8px] sm:text-[9px] font-black uppercase tracking-widest transition-colors", isActive ? "text-primary" : "text-[#6b7a99]")}>{d.day}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-4">
+
+              {/* Join the Grind — real online count */}
+              <div className="flex-1 bg-[#1b1b20] rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <h3 className="text-sm font-black text-[#e4e1e9]">Devs Online Now</h3>
+                  </div>
+                  <p className="text-xs text-[#6b7a99] leading-relaxed">
+                    <span className="text-[#e4e1e9] font-black text-base">{loading ? "…" : onlineCount}</span>
+                    {" "}grinders active right now
+                  </p>
+                </div>
+                <Link href="/chat">
+                  <button className="w-full flex items-center justify-center gap-2 py-2.5 sm:py-3 rounded-xl font-black text-sm text-white transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30 active:scale-[0.98]"
+                    style={{ background: "linear-gradient(135deg,#2547f4,#5b6cf9)" }}>
+                    <IconMessageCircle size={15} />Join the Chat
+                  </button>
+                </Link>
+              </div>
+
+              {/* Today's DSA problem */}
+              <div className="flex-1 bg-[#1b1b20] rounded-2xl p-4 sm:p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <IconCode size={14} className="text-primary flex-shrink-0" />
+                  <h3 className="text-sm font-black text-[#e4e1e9]">Daily DSA</h3>
+                  <span className="text-[9px] font-black text-emerald-400 border border-emerald-500/20 bg-emerald-500/10 rounded-full px-1.5 py-0.5 ml-auto">Easy</span>
+                </div>
+                {loading || !dsaDaily ? (
+                  <div className="space-y-2">
+                    <div className="h-4 bg-white/[0.06] rounded animate-pulse w-4/5" />
+                    <div className="h-3 bg-white/[0.04] rounded animate-pulse w-3/5" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-[#e4e1e9] leading-snug mb-2">{dsaDaily.title}</p>
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {dsaDaily.tags.slice(0, 2).map(t => (
+                        <span key={t} className="text-[9px] font-bold bg-primary/10 text-primary/80 border border-primary/20 rounded-full px-1.5 py-0.5">{t}</span>
+                      ))}
+                    </div>
+                    <a href={dsaDaily.leetcodeUrl} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-[11px] font-black text-primary hover:text-primary/80 transition-colors">
+                      Solve on LeetCode <IconExternalLink size={12} />
+                    </a>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Recent Activity + Active Challenges ───── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Recent completions */}
+            <div className="bg-[#1b1b20] rounded-2xl p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-black text-[#e4e1e9]">Recent Activity</h2>
+                <Link href="/challenges" className="text-[10px] sm:text-[11px] font-black text-primary/60 hover:text-primary transition-colors flex items-center gap-1">
+                  All <IconChevronRight size={12} />
+                </Link>
+              </div>
+              {loading ? (
+                <div className="space-y-2.5">
+                  {[1,2,3].map(i => <div key={i} className="h-12 bg-white/[0.04] rounded-xl animate-pulse" />)}
+                </div>
+              ) : recentActivity.length === 0 ? (
+                <div className="flex flex-col items-center py-6 gap-2 text-center">
+                  <IconBolt size={28} className="text-[#6b7a99] opacity-30" />
+                  <p className="text-xs text-[#6b7a99]">No completions yet.<br />Start a challenge!</p>
+                  <Link href="/challenges">
+                    <button className="mt-1 text-[11px] font-black text-primary border border-primary/30 bg-primary/10 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors">
+                      Browse →
+                    </button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {recentActivity.map((item, i) => {
+                    const ago = (() => {
+                      const s = (Date.now() - new Date(item.completedAt).getTime()) / 1000;
+                      if (s < 3600) return `${Math.round(s / 60)}m ago`;
+                      if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+                      return `${Math.round(s / 86400)}d ago`;
+                    })();
+                    return (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
+                        <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                          <IconCheck size={12} className="text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-bold text-[#e4e1e9] truncate capitalize">{item.challengeId.replace(/-/g, " ")}</p>
+                          <p className="text-[10px] text-[#6b7a99]">{ago}</p>
+                        </div>
+                        <span className="text-[11px] font-black text-emerald-400 flex-shrink-0">+{item.points}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Available challenges */}
+            <div className="bg-[#1b1b20] rounded-2xl p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-black text-[#e4e1e9]">Challenges</h2>
+                <Link href="/challenges" className="text-[10px] sm:text-[11px] font-black text-primary/60 hover:text-primary transition-colors flex items-center gap-1">
+                  All <IconChevronRight size={12} />
+                </Link>
+              </div>
+              {loading ? (
+                <div className="space-y-2.5">
+                  {[1,2,3].map(i => <div key={i} className="h-12 bg-white/[0.04] rounded-xl animate-pulse" />)}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {challenges.map(ch => (
+                    <Link key={ch.id} href="/challenges">
+                      <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] cursor-pointer transition-colors group">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-base flex-shrink-0">{ch.icon}</span>
+                          <p className="text-[12px] font-bold text-[#c4c5d9] group-hover:text-[#e4e1e9] truncate transition-colors">{ch.title}</p>
+                        </div>
+                        <span className="text-[9px] font-black text-primary border border-primary/20 bg-primary/10 rounded-full px-2 py-0.5 flex-shrink-0 ml-2">
+                          +{ch.points}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Quick Actions ────────────────────────── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            {[
+              { icon: <IconBolt size={15} />,         label: "Start Challenge", href: "/challenges" },
+              { icon: <IconChartBar size={15} />,      label: "My Stats",        href: "/stats" },
+              { icon: <IconUsers size={15} />,         label: "Discover",        href: "/users" },
+              { icon: <IconArrowUpRight size={15} />,  label: "My Profile",      href: `/profile/${userId}` },
+            ].map(({ icon, label, href }) => (
+              <Link key={label} href={href}>
+                <div className="flex items-center gap-2 bg-[#1b1b20] hover:bg-[#232329] border border-white/[0.06] hover:border-primary/20 rounded-xl p-3 sm:p-3.5 cursor-pointer transition-all group h-full">
+                  <div className="text-[#6b7a99] group-hover:text-primary transition-colors flex-shrink-0">{icon}</div>
+                  <span className="text-[11px] sm:text-[12px] font-bold text-[#6b7a99] group-hover:text-[#e4e1e9] transition-colors leading-tight">{label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* ── Leaderboard ──────────────────────────── */}
+          <div className="bg-[#1b1b20] rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-white/[0.04]">
+              <div className="flex items-center gap-2">
+                <IconMedal size={16} className="text-primary flex-shrink-0" />
+                <h2 className="text-sm font-black text-[#e4e1e9]">Live Leaderboard</h2>
+                {rank && <span className="text-[9px] font-black text-primary border border-primary/20 bg-primary/10 rounded-full px-2 py-0.5">You: #{rank}</span>}
+              </div>
+              <Link href="/stats" className="text-[10px] sm:text-[11px] font-black text-primary/60 hover:text-primary transition-colors flex items-center gap-1">
+                Stats <IconChevronRight size={12} />
+              </Link>
+            </div>
+            <div className="p-3 sm:p-4">
+              <Leaderboard />
+            </div>
+          </div>
+
+        </main>
       </div>
-      <button className="text-zinc-500 hover:text-white">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" /></svg>
-      </button>
+
+      {/* ── Mobile Bottom Nav ─────────────────────────── */}
+      <nav className="mobile-bottom-nav lg:hidden safe-pb">
+        <div className="flex items-center justify-around px-2 pt-2 pb-1">
+          {MOBILE_NAV.map(({ icon: Icon, label, href }) => {
+            const isActive = pathname === href;
+            return (
+              <Link key={label} href={href} className="no-min-size">
+                <div className={cn("flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all",
+                  isActive ? "text-primary" : "text-[#6b7a99] hover:text-[#e4e1e9]")}>
+                  <div className={cn("p-2 rounded-xl transition-all", isActive && "bg-primary/15")}>
+                    <Icon size={20} />
+                  </div>
+                  <span className="text-[9px] font-bold tracking-wide">{label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
-
-function UserMiniCard({ name, role }: { name: string, role: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-zinc-800" />
-      <div>
-        <p className="text-[13px] font-bold text-white">{name}</p>
-        <p className="text-[10px] text-zinc-500 font-sans">{role}</p>
-      </div>
-    </div>
-  );
-}
-
-// Icons
-function DashboardIcon() { return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> }
-function ChallengesIcon() { return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> }
-function NetworkIcon() { return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg> }
-function StatsIcon() { return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> }
-function SettingsIcon() { return <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> }

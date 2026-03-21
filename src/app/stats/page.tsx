@@ -132,8 +132,10 @@ export default function StatsPage() {
     const uid = session.user.id;
     
     // Check cache (valid for 60 seconds)
+    // But bust early if GitHub shows 0 commits despite being linked (stale data)
     const cached = _statsCache[uid];
-    if (cached && Date.now() - cached.timestamp < 60000) {
+    const staleGitHub = cached?.data?.githubStatus?.hasUsername && !cached?.data?.githubStatus?.commitCount;
+    if (cached && Date.now() - cached.timestamp < 60000 && !staleGitHub) {
       setChallengeStats(cached.data.challengeStats);
       setGithubStatus(cached.data.githubStatus);
       setWakaStats(cached.data.wakaStats);

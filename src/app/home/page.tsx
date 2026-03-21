@@ -154,10 +154,12 @@ export default function HomePage() {
     // Heartbeat every time we hit the page
     fetch("/api/users/heartbeat", { method: "POST" }).catch(() => {});
 
-    // Cache hit: valid for 60 seconds, but re-fetch if weeklyCommits looks stale (all zeros despite GitHub linked)
+    // Cache hit: valid for 60 seconds
+    // Bust early if: weekly commits are stale zeros, OR today's commitCount is 0 despite GitHub being linked
     const now = Date.now();
     const staleCommits = _dashboardCache?.weeklyCommits === 0 && _dashboardCache?.ghStatus?.hasUsername;
-    if (_dashboardCache && now - (_dashboardCache.lastFetched ?? 0) < 60000 && !staleCommits) {
+    const staleToday = _dashboardCache?.ghStatus?.hasUsername && !_dashboardCache?.ghStatus?.commitCount;
+    if (_dashboardCache && now - (_dashboardCache.lastFetched ?? 0) < 60000 && !staleCommits && !staleToday) {
       setLoading(false);
       return; 
     }

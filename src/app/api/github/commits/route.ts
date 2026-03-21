@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (process.env.GITHUB_TOKEN) headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
 
     const eventsRes = await fetch(
-      `https://api.github.com/users/${githubUsername}/events?per_page=30`,
+      `https://api.github.com/users/${githubUsername}/events?per_page=100`,
       { headers }
     );
 
@@ -48,10 +48,20 @@ export async function POST(req: NextRequest) {
     }
 
     const events = await eventsRes.json();
-    const todayStr = new Date().toISOString().split("T")[0];
-
+    // GitHub events use UTC. Compare with both today AND yesterday UTC
+    // because IST is +5:30, so midnight IST = 6:30 PM UTC previous day
+    const todayUTC = new Date().toISOString().slice(0, 10);
+    const yesterdayUTC = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    // Determine local date (IST) in YYYY-MM-DD
+    const _ld = new Date();
+    const localDateStr = `${_ld.getFullYear()}-${String(_ld.getMonth()+1).padStart(2,"0")}-${String(_ld.getDate()).padStart(2,"0")}`;
+    // A push counts as "today" if it was on today's LOCAL date (IST), using the UTC timestamp to find it
+    // GitHub events: created_at is UTC. User in IST: midnight IST = UTC previous day 18:30
+    // So we accept pushes from yesterday UTC onwards that fall within today's local date window
+    const localMidnightUTC = new Date();
+    localMidnightUTC.setHours(0, 0, 0, 0);
     const committedToday = events.some(
-      (e: any) => e.type === "PushEvent" && e.created_at?.startsWith(todayStr)
+      (e: any) => e.type === "PushEvent" && new Date(e.created_at) >= localMidnightUTC
     );
 
     if (!committedToday) {
@@ -118,17 +128,20 @@ export async function GET(req: NextRequest) {
     if (process.env.GITHUB_TOKEN) headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
 
     const eventsRes = await fetch(
-      `https://api.github.com/users/${githubUsername}/events?per_page=30`,
-      { headers, next: { revalidate: 120 } }
+      `https://api.github.com/users/${githubUsername}/events?per_page=100`,
+      { headers, next: { revalidate: 30 } }
     );
 
     if (!eventsRes.ok) return NextResponse.json({ hasUsername: true, committedToday: false, error: "GitHub API error" });
 
     const events = await eventsRes.json();
-    const todayStr = new Date().toISOString().split("T")[0];
+    // Compare against local midnight (not UTC midnight) so that IST users
+    // see commits made after midnight IST as "today's commits"
+    const localMidnight = new Date();
+    localMidnight.setHours(0, 0, 0, 0);
 
     const todaysPushes = events.filter(
-      (e: any) => e.type === "PushEvent" && e.created_at?.startsWith(todayStr)
+      (e: any) => e.type === "PushEvent" && new Date(e.created_at) >= localMidnight
     );
 
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -144,7 +157,7 @@ export async function GET(req: NextRequest) {
       hasUsername: true,
       githubUsername,
       committedToday: todaysPushes.length > 0,
-      commitCount: todaysPushes.reduce((sum: number, e: any) => sum + (e.payload?.commits?.length || 0), 0),
+      commitCount: todaysPushes.reduce((sum: number, e: any) => sum + (e.payload?.commits?.length || 1), 0),
       alreadyClaimed,
       streak,
     });

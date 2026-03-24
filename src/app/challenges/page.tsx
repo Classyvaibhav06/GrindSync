@@ -167,7 +167,7 @@ export default function ChallengesPage() {
   const [dsaEarned, setDsaEarned] = useState(0);
   const [hasLcUsername, setHasLcUsername] = useState(true); // optimistic
   
-  // WakaTime state
+  // CodeTime state
   const [wtStats, setWtStats] = useState({ totalSeconds: 0, error: null as string | null, loading: true, hasKey: true });
   const [wtVerifying, setWtVerifying] = useState<string | null>(null);
 
@@ -281,11 +281,11 @@ export default function ChallengesPage() {
   const fetchWakatime = useCallback(async () => {
     setWtStats(p => ({ ...p, loading: true }));
     try {
-      const res = await fetch("/api/challenges/wakatime");
+      const res = await fetch("/api/challenges/codetime");
       const data = await res.json();
       if (res.ok) {
         setWtStats({ totalSeconds: data.totalSecondsToday, error: null, loading: false, hasKey: true });
-      } else if (data.error === "NO_WAKATIME_KEY") {
+      } else if (data.error === "NO_CODETIME_KEY") {
         setWtStats({ totalSeconds: 0, error: null, loading: false, hasKey: false });
       } else {
         setWtStats({ totalSeconds: 0, error: data.message || "Failed", loading: false, hasKey: true });
@@ -299,11 +299,67 @@ export default function ChallengesPage() {
     try {
       const res = await fetch("/api/github/commits");
       const data = await res.json();
-      setGhStatus({ ...data, loading: false });
+      
+      // Fetch actual GitHub streak from contributions graph
+      let actualStreak = data.streak;
+      let actualCommittedToday = data.committedToday;
+      if (session?.user?.id && data.hasUsername) {
+        try {
+          const contribRes = await fetch(`/api/github/contributions?userId=${session.user.id}`);
+          const contribData = await contribRes.json();
+          if (contribData.weeks && contribData.weeks.length > 0) {
+            const allDays: { date: string; count: number }[] = [];
+            for (const w of contribData.weeks) {
+              for (const d of w) allDays.push(d);
+            }
+            
+            let streak = 0;
+            let committedToday = false;
+            const todayDate = new Date();
+            const localISO = (dt: Date) => {
+              const y = dt.getFullYear();
+              const m = String(dt.getMonth() + 1).padStart(2, "0");
+              const dd = String(dt.getDate()).padStart(2, "0");
+              return `${y}-${m}-${dd}`;
+            };
+            const todayStr = localISO(todayDate);
+            
+            const todayData = allDays.find(a => a.date === todayStr);
+            if (todayData && todayData.count > 0) {
+              committedToday = true;
+            }
+            
+            let checkDate = new Date(todayDate);
+            while (true) {
+              const iso = localISO(checkDate);
+              const dayObj = allDays.find(a => a.date === iso);
+              if (!dayObj) break;
+              
+              if (dayObj.count > 0) {
+                streak++;
+              } else if (iso !== todayStr) {
+                break;
+              }
+              checkDate.setDate(checkDate.getDate() - 1);
+            }
+            actualStreak = Math.max(actualStreak, streak);
+            actualCommittedToday = actualCommittedToday || committedToday;
+          }
+        } catch (e) {
+          console.error("Failed to fetch actual github streak:", e);
+        }
+      }
+      
+      setGhStatus({
+        ...data,
+        streak: actualStreak,
+        committedToday: actualCommittedToday,
+        loading: false
+      });
     } catch {
       setGhStatus(p => ({ ...p, loading: false }));
     }
-  }, []);
+  }, [session?.user?.id]);
 
   const claimGithubCommit = async () => {
     setGhClaiming(true);

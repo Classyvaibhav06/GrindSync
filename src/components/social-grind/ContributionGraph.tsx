@@ -32,13 +32,20 @@ function calcStreaks(weeks: ContributionDay[][]) {
   let current = 0, longest = 0, run = 0;
 
   // current streak — walk backwards from today
-  const today = new Date().toISOString().slice(0, 10);
+  const localISO = (dt: Date) => {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  };
+  const todayStr = localISO(new Date());
+
   for (let i = flat.length - 1; i >= 0; i--) {
     const d = flat[i];
     // Allow up to 1 day gap for "today hasn't ended yet"
     if (d.count > 0) {
       current++;
-    } else if (d.date < today) {
+    } else if (d.date < todayStr) {
       break;
     }
   }

@@ -1,0 +1,31 @@
+Users with following: 8
+User 69bc2861aaf93325b9989be6
+following: object - ObjectId - 69bc2b41aaf93325b9989bea, object - ObjectId - 69bc29f3aaf93325b9989be8
+User 69bc29f3aaf93325b9989be8
+following: object - ObjectId - 69bc2861aaf93325b9989be6, object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69bc2b41aaf93325b9989bea
+following: object - ObjectId - 69bc29f3aaf93325b9989be8, object - ObjectId - 69bc2861aaf93325b9989be6, object - ObjectId - 69c01daf2063dd980fa78de0, object - ObjectId - 69c03aba3d3013ba77ea06d9, object - ObjectId - 69c0f6025231e21da34ae131
+User 69be76db79dffa436611f907
+following: object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69c01daf2063dd980fa78de0
+following: object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69c02b5e4b437f099bbc1c07
+following: object - ObjectId - 69bc29f3aaf93325b9989be8
+User 69c03aba3d3013ba77ea06d9
+following: object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69c0f6025231e21da34ae131
+following: object - ObjectId - 69bc29f3aaf93325b9989be8, object - ObjectId - 69bc2b41aaf93325b9989bea
+
+Users with followers:
+User 69bc2861aaf93325b9989be6
+followers: object - ObjectId - 69bc29f3aaf93325b9989be8, object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69bc29f3aaf93325b9989be8
+followers: object - ObjectId - 69bc2b41aaf93325b9989bea, object - ObjectId - 69bc2861aaf93325b9989be6, object - ObjectId - 69c02b5e4b437f099bbc1c07, object - ObjectId - 69c0f6025231e21da34ae131
+User 69bc2b41aaf93325b9989bea
+followers: object - ObjectId - 69bc29f3aaf93325b9989be8, object - ObjectId - 69bc2861aaf93325b9989be6, object - ObjectId - 69be76db79dffa436611f907, object - ObjectId - 69c01daf2063dd980fa78de0, object - ObjectId - 69c03aba3d3013ba77ea06d9, object - ObjectId - 69c0f6025231e21da34ae131
+User 69c01daf2063dd980fa78de0
+followers: object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69c03aba3d3013ba77ea06d9
+followers: object - ObjectId - 69bc2b41aaf93325b9989bea
+User 69c0f6025231e21da34ae131
+followers: object - ObjectId - 69bc2b41aaf93325b9989bea

@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import Leaderboard from "@/components/social-grind/Leaderboard";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
+
 
 /* ── Types ──────────────────────────────────────────── */
 interface ChallengeStats { totalPoints: number; completedCount: number }
@@ -182,7 +184,7 @@ export default function HomePage() {
         setGhStatus(d); newCache.ghStatus = d;
       }),
       // WakaTime
-      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => {
+      fetch("/api/challenges/codetime").then(r => r.json()).then(d => {
         setWaka(d); newCache.waka = d;
       }),
       // Leaderboard rank
@@ -213,19 +215,54 @@ export default function HomePage() {
         if (d.weeks) {
           for (const week of d.weeks) for (const day of week) allDays.push(day);
         }
-        // Get last 7 calendar days (today = index 6)
-        const today = new Date();
-        const last7: { day: string; count: number }[] = [];
-        // Helper: format date as YYYY-MM-DD in LOCAL timezone (not UTC)
-        const localISO = (d: Date) => {
-          const y = d.getFullYear();
-          const m = String(d.getMonth() + 1).padStart(2, "0");
-          const dd = String(d.getDate()).padStart(2, "0");
+        
+        let currentStreak = 0;
+        let committedToday = false;
+
+        const todayDate = new Date();
+        const localISO = (dt: Date) => {
+          const y = dt.getFullYear();
+          const m = String(dt.getMonth() + 1).padStart(2, "0");
+          const dd = String(dt.getDate()).padStart(2, "0");
           return `${y}-${m}-${dd}`;
         };
+        const todayStr = localISO(todayDate);
+
+        if (allDays.length > 0) {
+          const todayData = allDays.find(a => a.date === todayStr);
+          if (todayData && todayData.count > 0) {
+            committedToday = true;
+          }
+
+          let checkDate = new Date(todayDate);
+          while (true) {
+            const iso = localISO(checkDate);
+            const data = allDays.find(a => a.date === iso);
+            if (!data) break;
+
+            if (data.count > 0) {
+              currentStreak++;
+            } else {
+              if (iso === todayStr) {
+                // Today having 0 doesn't break existing streak from yesterday
+              } else {
+                break;
+              }
+            }
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+          
+          setGhStatus(prev => {
+            if (!prev) return { hasUsername: !!d.githubUsername, streak: currentStreak, committedToday };
+            return { ...prev, streak: currentStreak, committedToday };
+          });
+        }
+
+        // Get last 7 calendar days (today = index 6)
+        const last7: { day: string; count: number }[] = [];
         for (let i = 6; i >= 0; i--) {
-          const d2 = new Date(today);
-          d2.setDate(today.getDate() - i);
+          const d2 = new Date(todayDate);
+          d2.setDate(todayDate.getDate() - i);
           const iso = localISO(d2);
           const found = allDays.find(a => a.date === iso);
           last7.push({ day: DAY_LABELS[d2.getDay()], count: found?.count ?? 0 });
@@ -368,6 +405,7 @@ export default function HomePage() {
               <IconSearch size={13} className="text-[#6b7a99] group-hover:text-primary transition-colors" />
               <span className="text-[12px] sm:text-[13px] text-[#6b7a99] font-medium w-28 sm:w-40">Search devs…</span>
             </div>
+            <ThemeToggle className="hidden sm:inline-flex" />
             <NotificationBell />
             <Link href={`/profile/${userId}`}>
               <UserAvatar userId={userId} sessionImage={userImage} userName={userName} />
@@ -387,9 +425,9 @@ export default function HomePage() {
             <KpiCard label="GitHub Streak" value={loading ? "…" : `${streak} days`}
               chip={ghStatus?.committedToday ? "✅ Today done" : ghStatus?.hasUsername ? "No push today" : "Link GitHub"}
               chipColor="green" loading={loading} />
-            <KpiCard label="Deep Work"
+            <KpiCard label="Screen Time"
               value={loading ? "…" : wakaOk ? fmtTime(waka!.totalSecondsToday!) : "—"}
-              chip={wakaOk ? "Today via WakaTime" : waka?.error === "NO_WAKATIME_KEY" ? "Link WakaTime" : "No data"}
+              chip={wakaOk ? "Today via GrindSync" : waka?.error === "NO_CODETIME_KEY" ? "Link API Key" : waka?.error || "No data"}
               chipColor="purple" loading={loading && !waka} />
           </div>
 

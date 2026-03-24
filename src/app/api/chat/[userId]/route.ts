@@ -48,10 +48,14 @@ export async function GET(
     // Get partner info
     const partner = await db.collection("users").findOne(
       { _id: tid },
-      { projection: { name: 1, username: 1, image: 1, lastActive: 1 } }
+      { projection: { name: 1, username: 1, image: 1, lastActive: 1, typingTo: 1, typingAt: 1 } }
     );
 
     const threshold = new Date(Date.now() - 2 * 60 * 1000);
+    // Typing status valid if typed within last 6 seconds
+    const isTyping = partner?.typingTo?.toString() === session.user.id &&
+                     partner?.typingAt &&
+                     new Date(Date.now() - new Date(partner.typingAt).getTime()).getTime() < 6000;
 
     return NextResponse.json({
       messages: messages.map((m) => ({
@@ -71,6 +75,7 @@ export async function GET(
             isOnline: partner.lastActive
               ? new Date(partner.lastActive) >= threshold
               : false,
+            isTyping: !!isTyping,
           }
         : null,
     });

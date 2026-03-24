@@ -53,7 +53,7 @@ export async function GET(
         website: user.website || "",
         banner: user.banner || "",
         leetcodeUsername: user.leetcodeUsername || "",
-        wakatimeApiKey: user.wakatimeApiKey || "",
+        codetimeToken: user.codetimeToken || "",
         githubUsername: user.githubUsername || "",
         dsaSolvedDates: user.dsaSolvedDates || [],
         followersCount,
@@ -106,7 +106,7 @@ export async function PATCH(
 
     const body2 = body as Record<string, string | undefined>;
     const banner = body2.banner;
-    const wakatimeApiKey = body2.wakatimeApiKey;
+    const codetimeToken = body2.codetimeToken;
     const githubUsername = body2.githubUsername;
 
     const updateData: Record<string, string> = { name: name.trim() };
@@ -115,7 +115,7 @@ export async function PATCH(
     if (location !== undefined) updateData.location = location;
     if (website !== undefined) updateData.website = website;
     if (banner !== undefined) updateData.banner = banner;
-    if (wakatimeApiKey !== undefined) updateData.wakatimeApiKey = wakatimeApiKey;
+    if (codetimeToken !== undefined) updateData.codetimeToken = codetimeToken;
     if (githubUsername !== undefined) updateData.githubUsername = githubUsername.replace(/^@/, "").trim();
 
     await db.collection("users").updateOne(

@@ -1,0 +1,34 @@
+{
+  "name": "grindsync-tracker",
+  "displayName": "GrindSync Tracker",
+  "description": "Tracks your raw VS Code Screen Time straight to SocialGrind.",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "grindsync-tracker.start",
+        "title": "Start GrindSync Tracker"
+      }
+    ],
+    "configuration": {
+      "title": "GrindSync",
+      "properties": {
+        "grindsync.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your private GrindSync API Key to log Screen Time"
+        }
+      }
+    }
+  }
+}

@@ -13,6 +13,7 @@ import {
   IconSend2,
   IconEdit,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 
 /* ─── Types ──────────────────────────────────────── */
 interface Conversation {
@@ -39,6 +40,7 @@ interface Partner {
   username: string;
   image: string | null;
   isOnline: boolean;
+  isTyping?: boolean;
 }
 interface Friend {
   _id: string;
@@ -105,6 +107,26 @@ function Avatar({
   );
 }
 
+const playNotificationSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    console.error("Audio block", e);
+  }
+};
+
 /* ═══════════════════════════════════════════════════
    MAIN CHAT PAGE
 ═══════════════════════════════════════════════════ */
@@ -144,6 +166,13 @@ export default function ChatPage() {
   const [hoveredConvo, setHoveredConvo]   = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef       = useRef<HTMLInputElement>(null);
+  const prevUnreadRef  = useRef<Record<string, number> | null>(null);
+  const lastTypedRef   = useRef<number>(0);
+  const messagesRef    = useRef<Message[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -155,11 +184,40 @@ export default function ChatPage() {
       const res = await fetch("/api/chat");
       if (res.ok) {
         const data = await res.json();
-        setConversations(data.conversations || []);
-        if (typeof window !== "undefined") localStorage.setItem("chat_conversations", JSON.stringify(data.conversations || []));
+        const convos: Conversation[] = data.conversations || [];
+        setConversations(convos);
+        if (typeof window !== "undefined") localStorage.setItem("chat_conversations", JSON.stringify(convos));
+
+        if (prevUnreadRef.current !== null) {
+          let shouldPlaySound = false;
+          convos.forEach(c => {
+            const prevUnread = prevUnreadRef.current![c.partnerId] || 0;
+            if (c.unread > prevUnread && c.partnerId !== activeChat) {
+              shouldPlaySound = true;
+              const snippet = c.lastMessage?.length > 40 ? c.lastMessage.slice(0, 40) + "..." : c.lastMessage;
+              toast(c.partnerName, {
+                description: snippet,
+                action: {
+                  label: "Reply",
+                  onClick: () => {
+                    openChat(c.partnerId, {
+                      name: c.partnerName, username: c.partnerUsername, image: c.partnerImage, isOnline: c.isOnline
+                    });
+                  }
+                }
+              });
+            }
+          });
+          if (shouldPlaySound) playNotificationSound();
+        }
+        
+        // Update the refs dictionary
+        const nextRefs: Record<string, number> = {};
+        convos.forEach(c => { nextRefs[c.partnerId] = c.unread; });
+        prevUnreadRef.current = nextRefs;
       }
     } catch {}
-  }, []);
+  }, [activeChat]);
 
   const fetchFriends = useCallback(async () => {
     try {
@@ -173,17 +231,32 @@ export default function ChatPage() {
   }, []);
 
   const fetchMessages = useCallback(async (userId: string) => {
-    setLoadingMsgs(true);
     try {
       const res = await fetch(`/api/chat/${userId}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data.messages || []);
-        // Only update partner from API if not already set (avoid flicker)
+        const newMsgs = data.messages || [];
+        
+        // Grab current messages from ref to avoid stale closures and state callback side-effects
+        const prev = messagesRef.current;
+        const newIncoming = newMsgs.filter((m: Message) => m.senderId !== session?.user?.id && !prev.some(p => p._id === m._id));
+        
+        if (newIncoming.length > 0 && prev.length > 0) {
+          playNotificationSound();
+          // The last message is inside data.messages[data.messages.length - 1]
+          const lastM = newIncoming[newIncoming.length - 1];
+          const snippet = lastM?.content?.length > 40 ? lastM.content.slice(0, 40) + "..." : lastM?.content;
+          toast(data.partner?.name || "Message", {
+             description: snippet,
+             duration: 2000 // dismiss quickly since they are staring at it
+          });
+        }
+        
+        setMessages(newMsgs);
         if (data.partner) setPartner(data.partner);
       }
     } catch {} finally { setLoadingMsgs(false); }
-  }, []);
+  }, [session?.user?.id]);
 
   /**
    * openChat — call this instead of setActiveChat directly.
@@ -264,6 +337,14 @@ export default function ChatPage() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    if (activeChat && Date.now() - lastTypedRef.current > 2000) {
+      lastTypedRef.current = Date.now();
+      fetch(`/api/chat/${activeChat}/typing`, { method: "POST" }).catch(() => {});
+    }
   };
 
   /* ── Loading / auth guard ── */
@@ -581,10 +662,13 @@ export default function ChatPage() {
                     <div>
                       <p className="text-sm font-bold leading-none">{partner.name}</p>
                       <p className="text-xs mt-0.5">
-                        {partner.isOnline
-                          ? <span className="text-green-400 font-medium">Active now</span>
-                          : <span className="text-white/30">@{partner.username}</span>
-                        }
+                        {partner.isTyping ? (
+                          <span className="text-primary font-bold italic animate-pulse">Typing...</span>
+                        ) : partner.isOnline ? (
+                          <span className="text-green-400 font-medium">Active now</span>
+                        ) : (
+                          <span className="text-white/30">@{partner.username}</span>
+                        )}
                       </p>
                     </div>
                   </Link>
@@ -704,7 +788,7 @@ export default function ChatPage() {
                     ref={inputRef}
                     type="text"
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     placeholder="Message…"
                     className="flex-1 bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"

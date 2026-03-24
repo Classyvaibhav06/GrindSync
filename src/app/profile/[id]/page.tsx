@@ -132,7 +132,7 @@ function EditProfileModal({ profile, userId, onClose, onSaved }: {
   const [form, setForm] = useState({ name: profile.name || "", username: profile.username || "", bio: profile.bio || "", location: profile.location || "", website: profile.website || "" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [wtApiKey, setWtApiKey] = useState(profile.wakatimeApiKey || "");
+  const [codetimeToken, setCodetimeToken] = useState(profile.codetimeToken || "");
   const [ghUsername, setGhUsername] = useState(profile.githubUsername || "");
   const [lcUsername, setLcUsername] = useState(profile.leetcodeUsername || "");
   const [lcSaving, setLcSaving] = useState(false);
@@ -144,10 +144,10 @@ function EditProfileModal({ profile, userId, onClose, onSaved }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true); setErr(null);
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, wakatimeApiKey: wtApiKey.trim(), githubUsername: ghUsername.trim() }) });
+      const res = await fetch(`/api/users/${userId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, codetimeToken: codetimeToken.trim(), githubUsername: ghUsername.trim() }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save");
-      onSaved({ ...form, wakatimeApiKey: wtApiKey, githubUsername: ghUsername, leetcodeUsername: lcUsername });
+      onSaved({ ...form, codetimeToken: codetimeToken, githubUsername: ghUsername, leetcodeUsername: lcUsername });
     } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
   };
 
@@ -206,9 +206,9 @@ function EditProfileModal({ profile, userId, onClose, onSaved }: {
               {lcMsg && <p className={cn("text-[10px] px-3 py-1.5 rounded-lg mt-1", lcMsg.ok ? "text-emerald-400 bg-emerald-500/[0.08]" : "text-red-400 bg-red-500/[0.08]")}>{lcMsg.text}</p>}
             </Field>
 
-            <Field label="🔵 WakaTime Secret API Key · for coding time tracking">
-              <input type="password" value={wtApiKey} onChange={e => setWtApiKey(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className={INPUT} />
-              <p className="text-[10px] text-[#6b7a99] mt-1">Get your key from <a href="https://wakatime.com/settings/account" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">WakaTime Settings</a>.</p>
+            <Field label="🔵 Code Time JWT Session Token · for screen time tracking">
+              <input type="password" value={codetimeToken} onChange={e => setCodetimeToken(e.target.value)} placeholder="eyJhbG..." className={INPUT} />
+              <p className="text-[10px] text-[#6b7a99] mt-1">Get your token from VS Code settings (Software.com) in <code className="text-primary font-mono bg-white/[0.05] px-1 rounded">~/.software/session.json</code></p>
             </Field>
 
             <Field label="⬛ GitHub Username · for commit tracking & repos">
@@ -323,7 +323,10 @@ export default function ProfilePage() {
     async function fetchProfile() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/users/${profileId}`);
+        const res = await fetch(`/api/users/${profileId}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache" }
+        });
         const data = await res.json();
         if (res.ok) {
           setProfile(data);
@@ -361,13 +364,35 @@ export default function ProfilePage() {
 
   const toggleFollow = async () => {
     if (!profile) return;
-    setProfile((prev: any) => ({ ...prev, useProfile: { ...prev.useProfile, isFollowing: !prev.useProfile.isFollowing, followersCount: prev.useProfile.isFollowing ? prev.useProfile.followersCount - 1 : prev.useProfile.followersCount + 1 } }));
+    const profileId = Array.isArray(id) ? id[0] : id;
+    
+    // Optimitically update UI state AND the global cache
+    const updateState = (prev: any, revert: boolean = false) => {
+      const isNowFollowing = revert ? prev.useProfile.isFollowing : !prev.useProfile.isFollowing;
+      const countDiff = revert ? (prev.useProfile.isFollowing ? -1 : 1) : (prev.useProfile.isFollowing ? -1 : 1);
+      
+      const newProfile = {
+        ...prev,
+        useProfile: {
+          ...prev.useProfile,
+          isFollowing: isNowFollowing,
+          followersCount: prev.useProfile.followersCount + countDiff
+        }
+      };
+      
+      if (typeof profileId === 'string' && _profileCache[profileId]) {
+        _profileCache[profileId].data = newProfile;
+      }
+      return newProfile;
+    };
+
+    setProfile((prev: any) => updateState(prev));
     try {
       const res = await fetch(`/api/users/${id}/follow`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
     } catch {
-      setProfile((prev: any) => ({ ...prev, useProfile: { ...prev.useProfile, isFollowing: !prev.useProfile.isFollowing, followersCount: prev.useProfile.isFollowing ? prev.useProfile.followersCount - 1 : prev.useProfile.followersCount + 1 } }));
+      setProfile((prev: any) => updateState(prev, true));
     }
   };
 

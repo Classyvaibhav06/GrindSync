@@ -152,10 +152,8 @@ export default function StatsPage() {
     Promise.allSettled([
       // Challenge stats
       fetch("/api/challenges/my-stats").then(r => r.json()).then(d => { setChallengeStats(d); data.challengeStats = d; }),
-      // GitHub
-      fetch("/api/github/commits").then(r => r.json()).then(d => { setGithubStatus(d); data.githubStatus = d; }),
-      // WakaTime
-      fetch("/api/challenges/wakatime").then(r => r.json()).then(d => { setWakaStats(d); data.wakaStats = d; }),
+      // CodeTime
+      fetch("/api/challenges/codetime").then(r => r.json()).then(d => { setWakaStats(d); data.wakaStats = d; }),
       // Leaderboard position
       fetch("/api/leaderboard").then(r => r.json()).then(d => {
         const idx = d.leaderboard?.findIndex((e: any) => e.id === uid);
@@ -164,20 +162,80 @@ export default function StatsPage() {
           setLeaderPos(lpos); data.leaderPos = lpos;
         }
       }),
-      // GitHub repos for language stats
-      fetch(`/api/github/repos?userId=${uid}`).then(r => r.json()).then(d => {
-        if (d.repos) {
-          setRepos(d.repos); data.repos = d.repos;
-          const counts: Record<string, number> = {};
-          for (const r of d.repos) if (r.language) counts[r.language] = (counts[r.language] || 0) + 1;
-          const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-          const tl = sorted.map(([lang, count]) => ({
-            lang, count,
-            repoPct: Math.round((count / d.repos.length) * 100),
-          }));
-          setTopLangs(tl); data.topLangs = tl;
+      // GitHub + contributions for streak
+      (async () => {
+        const [commRes, contRes] = await Promise.all([
+          fetch("/api/github/commits"),
+          fetch(`/api/github/contributions?userId=${uid}`)
+        ]);
+        const commData = await commRes.json();
+        const contData = await contRes.json();
+        
+        let actualStreak = commData.streak || 0;
+        let committedToday = commData.committedToday || false;
+        
+        if (contData.weeks && contData.weeks.length > 0) {
+          const allDays: { date: string; count: number }[] = [];
+          for (const w of contData.weeks) {
+            for (const d of w) allDays.push(d);
+          }
+          
+          let streak = 0;
+          let hasCommittedToday = false;
+          const todayDate = new Date();
+          const localISO = (dt: Date) => {
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, "0");
+            const dd = String(dt.getDate()).padStart(2, "0");
+            return `${y}-${m}-${dd}`;
+          };
+          const todayStr = localISO(todayDate);
+          
+          const todayData = allDays.find(a => a.date === todayStr);
+          if (todayData && todayData.count > 0) hasCommittedToday = true;
+          
+          let checkDate = new Date(todayDate);
+          while (true) {
+            const iso = localISO(checkDate);
+            const dayObj = allDays.find(a => a.date === iso);
+            if (!dayObj) break;
+            
+            if (dayObj.count > 0) {
+              streak++;
+            } else if (iso !== todayStr) {
+              break;
+            }
+            checkDate.setDate(checkDate.getDate() - 1);
+          }
+          actualStreak = Math.max(actualStreak, streak);
+          committedToday = committedToday || hasCommittedToday;
+          
+          // Language stats from repos (extracted from d.repos logic previously in Promise.all)
+          if (contData.githubUsername) {
+            try {
+              const rRes = await fetch(`/api/github/repos?userId=${uid}`);
+              const rData = await rRes.json();
+              if (rData.repos) {
+                setRepos(rData.repos); data.repos = rData.repos;
+                const counts: Record<string, number> = {};
+                for (const r of rData.repos) if (r.language) counts[r.language] = (counts[r.language] || 0) + 1;
+                const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                const tl = sorted.map(([lang, count]) => ({
+                  lang, count,
+                  repoPct: Math.round((count / rData.repos.length) * 100),
+                }));
+                setTopLangs(tl); data.topLangs = tl;
+              }
+            } catch (e) {
+              console.error("Failed to fetch repos in stats:", e);
+            }
+          }
         }
-      }),
+        
+        const finalGhStatus = { ...commData, streak: actualStreak, committedToday };
+        setGithubStatus(finalGhStatus);
+        data.githubStatus = finalGhStatus;
+      })(),
     ]).finally(() => {
       _statsCache[uid] = { data, timestamp: Date.now() };
       setLoading(false);
@@ -332,7 +390,7 @@ export default function StatsPage() {
               sub={githubStatus?.committedToday ? "✅ Committed today" : "No push today"}
               icon={<IconFlame size={16} className="text-emerald-400" />} accent="green" loading={loading} />
             <StatCard label="Deep Work Today" value={loading || !wToday ? (wakaStats?.error ? "—" : "…") : fmtTime(wToday)}
-              sub={wakaStats?.error === "NO_WAKATIME_KEY" ? "Link WakaTime in profile" : "Tracked via WakaTime"}
+              sub={wakaStats?.error === "NO_CODETIME_KEY" ? "Link CodeTime in profile" : "Tracked via CodeTime"}
               icon={<IconClock size={16} className="text-violet-400" />} accent="purple" loading={loading && !wakaStats} />
           </div>
 
@@ -481,15 +539,15 @@ export default function StatsPage() {
             )}
           </div>
 
-          {/* ── WakaTime Deep Work ─────────────────────── */}
+          {/* ── CodeTime Deep Work ─────────────────────── */}
           <div className="bg-[#1b1b20] rounded-2xl p-4 sm:p-5">
-            <SectionHead title="Time Tracking" sub="Powered by WakaTime" />
-            {wakaStats?.error === "NO_WAKATIME_KEY" ? (
+            <SectionHead title="Time Tracking" sub="Powered by CodeTime" />
+            {wakaStats?.error === "NO_CODETIME_KEY" ? (
               <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-violet-500/[0.06] border border-violet-500/20">
                 <IconClock size={32} className="text-violet-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-bold text-[#e4e1e9]">Connect WakaTime</p>
-                  <p className="text-xs text-[#6b7a99] mt-0.5">Add your WakaTime API key in Edit Profile to automatically track deep work time.</p>
+                  <p className="text-sm font-bold text-[#e4e1e9]">Connect CodeTime</p>
+                  <p className="text-xs text-[#6b7a99] mt-0.5">Add your CodeTime API key in Edit Profile to automatically track deep work time.</p>
                 </div>
                 <Link href={`/profile/${userId}`} className="flex-shrink-0">
                   <button className="text-[11px] font-black text-violet-400 border border-violet-500/30 bg-violet-500/10 px-4 py-2 rounded-full hover:bg-violet-500/20 transition-colors whitespace-nowrap">

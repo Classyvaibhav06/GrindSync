@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
 @theme {
   --color-brand-blue: #2547f4;
@@ -44,6 +45,95 @@
   --ring: oklch(0.6 0.25 260);
   --radius: 1rem;
 }
+
+/* ── Light Mode Variables ─────────────────────────────── */
+.light {
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.12 0.01 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.12 0.01 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0.01 260);
+  --primary: oklch(0.48 0.22 260);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0 0);
+  --secondary-foreground: oklch(0.25 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: oklch(0.92 0.05 260);
+  --accent-foreground: oklch(0.25 0 0);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.92 0 0);
+  --ring: oklch(0.48 0.22 260);
+}
+
+/* ── Light Mode: remap hardcoded dark hex colors ─────── */
+/*
+  Pages use Tailwind arbitrary values bg-[#0e0e13] etc.
+  We use [class*=] substring selectors to match them regardless
+  of how Tailwind escapes the class name in its generated CSS.
+*/
+
+/* Smooth color transition on everything */
+.light *,
+.light *::before,
+.light *::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* ── Main page backgrounds ── */
+.light [class*="bg-[#0e0e13]"] { background-color: #f4f4f8 !important; }
+.light [class*="bg-[#111116]"] { background-color: #ffffff !important; }
+.light [class*="bg-[#1b1b20]"] { background-color: #eff0f5 !important; }
+.light [class*="bg-[#1f1f26]"] { background-color: #e8e9ef !important; }
+.light [class*="bg-[#232329]"] { background-color: #e2e3e9 !important; }
+
+/* ── Primary text ── */
+.light [class*="text-[#e4e1e9]"]  { color: #1a1a2e !important; }
+.light [class*="text-[#c4c5d9]"]  { color: #3a3a5c !important; }
+.light [class*="text-[#6b7a99]"]  { color: #52607a !important; }
+.light [class*="text-[#9ca3af]"]  { color: #4b5563 !important; }
+
+/* ── Borders ── */
+.light [class*="border-white/[0.04]"] { border-color: rgba(0,0,0,0.06) !important; }
+.light [class*="border-white/[0.06]"] { border-color: rgba(0,0,0,0.08) !important; }
+.light [class*="border-white/[0.07]"] { border-color: rgba(0,0,0,0.09) !important; }
+.light [class*="border-white/[0.08]"] { border-color: rgba(0,0,0,0.10) !important; }
+.light [class*="border-white/[0.10]"] { border-color: rgba(0,0,0,0.12) !important; }
+.light [class*="border-white/[0.12]"] { border-color: rgba(0,0,0,0.14) !important; }
+.light [class*="border-white/[0.15]"] { border-color: rgba(0,0,0,0.16) !important; }
+
+/* ── Semi-transparent white backgrounds → dark tints ── */
+.light [class*="bg-white/[0.03]"] { background-color: rgba(0,0,0,0.025) !important; }
+.light [class*="bg-white/[0.04]"] { background-color: rgba(0,0,0,0.03)  !important; }
+.light [class*="bg-white/[0.05]"] { background-color: rgba(0,0,0,0.04)  !important; }
+.light [class*="bg-white/[0.06]"] { background-color: rgba(0,0,0,0.05)  !important; }
+.light [class*="bg-white/[0.07]"] { background-color: rgba(0,0,0,0.055) !important; }
+.light [class*="bg-white/[0.08]"] { background-color: rgba(0,0,0,0.06)  !important; }
+
+/* ── Backdrop blur headers & sidebars ── */
+.light [class*="bg-[#0e0e13]/80"] { background-color: rgba(244,244,248,0.88) !important; }
+.light [class*="bg-[#0e0e13]/60"] { background-color: rgba(244,244,248,0.70) !important; }
+
+/* ── Mobile bottom nav ── */
+.light .mobile-bottom-nav {
+  background: rgba(244,244,248,0.94) !important;
+  border-top-color: rgba(0,0,0,0.08) !important;
+}
+
+/* ── Scrollbar ── */
+.light ::-webkit-scrollbar-thumb       { background: rgba(0,0,0,0.18); }
+.light ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
+.light .heatmap-scroll                 { scrollbar-color: rgba(0,0,0,0.18) transparent; }
+.light .heatmap-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
+
+/* ── Theme toggle skeleton ── */
+.light .theme-toggle-skeleton { background: #e8e9ef; }
+
 
 /* ── Base ─────────────────────────────────────────────── */
 html {
@@ -209,4 +299,102 @@ body.modal-open {
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+}
+
+/* ── Theme Toggle ─────────────────────────────────────── */
+/*
+  Pill-shaped segmented control with spring-physics sliding capsule.
+  Works automatically with next-themes (dark/light class on <html>).
+*/
+
+.theme-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 140px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 9999px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: #1b1b20;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07), 0 1px 3px rgba(0,0,0,0.4);
+  transition: box-shadow 0.2s ease, background 0.3s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.light .theme-toggle {
+  background: #ebebf0;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.theme-toggle:focus-visible {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07), 0 0 0 2px #2547f4;
+}
+
+.theme-toggle-capsule {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 64px;
+  height: 30px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #2e55f6, #1a38d4);
+  box-shadow: 0 1px 6px rgba(37,71,244,0.5), 0 1px 2px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  /* Spring-physics cubic-bezier */
+  transition: left 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.theme-toggle[data-mode="light"] .theme-toggle-capsule {
+  left: calc(100% - 3px - 64px);
+}
+
+.theme-toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  z-index: 0;
+  transition: color 0.3s ease;
+  font-family: inherit;
+}
+
+.theme-toggle-label--dark  { left: 12px; }
+.theme-toggle-label--light { right: 10px; }
+
+/* Dark active: dark label invisible under capsule, light muted */
+.theme-toggle[data-mode="dark"] .theme-toggle-label--dark  { color: rgba(255,255,255,0); }
+.theme-toggle[data-mode="dark"] .theme-toggle-label--light { color: #6b7a99; }
+
+/* Light active: light label invisible under capsule, dark muted */
+.theme-toggle[data-mode="light"] .theme-toggle-label--dark  { color: #8a8fa8; }
+.theme-toggle[data-mode="light"] .theme-toggle-label--light { color: rgba(0,0,0,0); }
+
+/* Skeleton placeholder to avoid layout shift before hydration */
+.theme-toggle-skeleton {
+  display: inline-block;
+  width: 140px;
+  height: 36px;
+  border-radius: 9999px;
+  background: #1b1b20;
+  opacity: 0.4;
+  flex-shrink: 0;
 }

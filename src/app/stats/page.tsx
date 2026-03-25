@@ -130,12 +130,11 @@ export default function StatsPage() {
     if (!session?.user?.id) return;
 
     const uid = session.user.id;
-    
-    // Check cache (valid for 60 seconds)
-    // But bust early if GitHub shows 0 commits despite being linked (stale data)
+
+    // Check client cache (valid for 30 seconds)
     const cached = _statsCache[uid];
     const staleGitHub = cached?.data?.githubStatus?.hasUsername && !cached?.data?.githubStatus?.commitCount;
-    if (cached && Date.now() - cached.timestamp < 60000 && !staleGitHub) {
+    if (cached && Date.now() - cached.timestamp < 30000 && !staleGitHub) {
       setChallengeStats(cached.data.challengeStats);
       setGithubStatus(cached.data.githubStatus);
       setWakaStats(cached.data.wakaStats);
@@ -147,99 +146,21 @@ export default function StatsPage() {
     }
 
     setLoading(true);
-    const data: any = {};
 
-    Promise.allSettled([
-      // Challenge stats
-      fetch("/api/challenges/my-stats").then(r => r.json()).then(d => { setChallengeStats(d); data.challengeStats = d; }),
-      // CodeTime
-      fetch("/api/challenges/codetime").then(r => r.json()).then(d => { setWakaStats(d); data.wakaStats = d; }),
-      // Leaderboard position
-      fetch("/api/leaderboard").then(r => r.json()).then(d => {
-        const idx = d.leaderboard?.findIndex((e: any) => e.id === uid);
-        if (idx !== -1 && idx !== undefined) {
-          const lpos = { rank: idx + 1, total: d.leaderboard.length };
-          setLeaderPos(lpos); data.leaderPos = lpos;
-        }
-      }),
-      // GitHub + contributions for streak
-      (async () => {
-        const [commRes, contRes] = await Promise.all([
-          fetch("/api/github/commits"),
-          fetch(`/api/github/contributions?userId=${uid}`)
-        ]);
-        const commData = await commRes.json();
-        const contData = await contRes.json();
-        
-        let actualStreak = commData.streak || 0;
-        let committedToday = commData.committedToday || false;
-        
-        if (contData.weeks && contData.weeks.length > 0) {
-          const allDays: { date: string; count: number }[] = [];
-          for (const w of contData.weeks) {
-            for (const d of w) allDays.push(d);
-          }
-          
-          let streak = 0;
-          let hasCommittedToday = false;
-          const todayDate = new Date();
-          const localISO = (dt: Date) => {
-            const y = dt.getFullYear();
-            const m = String(dt.getMonth() + 1).padStart(2, "0");
-            const dd = String(dt.getDate()).padStart(2, "0");
-            return `${y}-${m}-${dd}`;
-          };
-          const todayStr = localISO(todayDate);
-          
-          const todayData = allDays.find(a => a.date === todayStr);
-          if (todayData && todayData.count > 0) hasCommittedToday = true;
-          
-          let checkDate = new Date(todayDate);
-          while (true) {
-            const iso = localISO(checkDate);
-            const dayObj = allDays.find(a => a.date === iso);
-            if (!dayObj) break;
-            
-            if (dayObj.count > 0) {
-              streak++;
-            } else if (iso !== todayStr) {
-              break;
-            }
-            checkDate.setDate(checkDate.getDate() - 1);
-          }
-          actualStreak = Math.max(actualStreak, streak);
-          committedToday = committedToday || hasCommittedToday;
-          
-          // Language stats from repos (extracted from d.repos logic previously in Promise.all)
-          if (contData.githubUsername) {
-            try {
-              const rRes = await fetch(`/api/github/repos?userId=${uid}`);
-              const rData = await rRes.json();
-              if (rData.repos) {
-                setRepos(rData.repos); data.repos = rData.repos;
-                const counts: Record<string, number> = {};
-                for (const r of rData.repos) if (r.language) counts[r.language] = (counts[r.language] || 0) + 1;
-                const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-                const tl = sorted.map(([lang, count]) => ({
-                  lang, count,
-                  repoPct: Math.round((count / rData.repos.length) * 100),
-                }));
-                setTopLangs(tl); data.topLangs = tl;
-              }
-            } catch (e) {
-              console.error("Failed to fetch repos in stats:", e);
-            }
-          }
-        }
-        
-        const finalGhStatus = { ...commData, streak: actualStreak, committedToday };
-        setGithubStatus(finalGhStatus);
-        data.githubStatus = finalGhStatus;
-      })(),
-    ]).finally(() => {
-      _statsCache[uid] = { data, timestamp: Date.now() };
-      setLoading(false);
-    });
+    fetch("/api/stats")
+      .then(r => r.json())
+      .then(d => {
+        setChallengeStats(d.challengeStats ?? null);
+        setGithubStatus(d.githubStatus ?? null);
+        setWakaStats(d.wakaStats ?? null);
+        setLeaderPos(d.leaderPos ?? null);
+        setRepos(d.repos ?? []);
+        setTopLangs(d.topLangs ?? []);
+
+        _statsCache[uid] = { data: d, timestamp: Date.now() };
+      })
+      .catch(err => console.error("Stats fetch error:", err))
+      .finally(() => setLoading(false));
   }, [session]);
 
   if (status === "loading") return (

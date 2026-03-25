@@ -309,9 +309,9 @@ export default function ProfilePage() {
     if (!id) return;
     const profileId = Array.isArray(id) ? id[0] : id;
 
-    // Check cache (valid for 60 seconds)
+    // Check cache (valid for 30 seconds)
     const cached = _profileCache[profileId];
-    if (cached && Date.now() - cached.timestamp < 60000) {
+    if (cached && Date.now() - cached.timestamp < 30000) {
       setProfile(cached.data);
       setRepos(cached.repos);
       setReposGhUsername(cached.reposGhUsername);
@@ -323,40 +323,45 @@ export default function ProfilePage() {
     async function fetchProfile() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/users/${profileId}`, {
-          cache: "no-store",
-          headers: { "Cache-Control": "no-cache" }
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setProfile(data);
-          let rDataObj = { repos: [], githubUsername: null, error: null as string | null };
-          if (data.useProfile?.githubUsername) {
-            setReposLoading(true);
-            try {
-              const rRes = await fetch(`/api/github/repos?userId=${profileId}`);
-              const rData = await rRes.json();
-              if (rData.repos) rDataObj.repos = rData.repos;
-              if (rData.githubUsername) rDataObj.githubUsername = rData.githubUsername;
-              if (rData.error && rData.error !== "NO_GITHUB") {
-                rDataObj.error = rData.error === "GITHUB_RATE_LIMIT" ? "GitHub API rate limit reached." : rData.error === "GITHUB_NOT_FOUND" ? "GitHub username not found." : "Could not load repos.";
-              }
-            } catch { rDataObj.error = "Network error."; } finally { setReposLoading(false); }
-          }
-          setRepos(rDataObj.repos);
-          setReposGhUsername(rDataObj.githubUsername);
-          setReposError(rDataObj.error);
-          
-          _profileCache[profileId] = {
-            data,
-            repos: rDataObj.repos,
-            reposGhUsername: rDataObj.githubUsername,
-            reposError: rDataObj.error,
-            timestamp: Date.now()
-          };
-        } else {
+        // Fire profile + repos in parallel (don't wait for profile before repos)
+        const [profileRes, reposRes] = await Promise.all([
+          fetch(`/api/users/${profileId}`, {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache" }
+          }),
+          fetch(`/api/github/repos?userId=${profileId}`).catch(() => null),
+        ]);
+
+        const data = await profileRes.json();
+        if (!profileRes.ok) {
           setError(data.error || "Failed to load profile");
+          return;
         }
+
+        setProfile(data);
+
+        // Process repos result
+        let rDataObj = { repos: [] as any[], githubUsername: null as string | null, error: null as string | null };
+        if (reposRes && reposRes.ok) {
+          const rData = await reposRes.json();
+          if (rData.repos) rDataObj.repos = rData.repos;
+          if (rData.githubUsername) rDataObj.githubUsername = rData.githubUsername;
+          if (rData.error && rData.error !== "NO_GITHUB") {
+            rDataObj.error = rData.error === "GITHUB_RATE_LIMIT" ? "GitHub API rate limit reached." : rData.error === "GITHUB_NOT_FOUND" ? "GitHub username not found." : "Could not load repos.";
+          }
+        }
+
+        setRepos(rDataObj.repos);
+        setReposGhUsername(rDataObj.githubUsername);
+        setReposError(rDataObj.error);
+
+        _profileCache[profileId] = {
+          data,
+          repos: rDataObj.repos,
+          reposGhUsername: rDataObj.githubUsername,
+          reposError: rDataObj.error,
+          timestamp: Date.now()
+        };
       } catch { setError("Network error"); } finally { setLoading(false); }
     }
     fetchProfile();

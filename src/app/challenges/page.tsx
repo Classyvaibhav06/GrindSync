@@ -193,29 +193,35 @@ export default function ChallengesPage() {
     if (status === "unauthenticated") router.push("/login");
   }, [status, router]);
 
-  const fetchData = useCallback(async () => {
+  const fetchAllData = useCallback(async () => {
     try {
-      const [challengesRes, statsRes] = await Promise.all([
-        fetch("/api/challenges"),
-        fetch("/api/challenges/my-stats"),
-      ]);
-      const challengesData = await challengesRes.json();
-      const statsData = await statsRes.json();
+      const res = await fetch("/api/challenges/all");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const d = await res.json();
 
-      setChallenges(challengesData.challenges || []);
-      setLeaderboard(challengesData.leaderboard || []);
-      setCompletedToday(statsData.completedToday || []);
-      setUserStats({
-        totalPoints: statsData.totalPoints ?? 0,
-        completedCount: statsData.completedCount ?? 0,
-      });
+      setChallenges(d.challenges || []);
+      setLeaderboard(d.leaderboard || []);
+      setCompletedToday(d.completedToday || []);
+      setUserStats({ totalPoints: d.userStats?.totalPoints ?? 0, completedCount: d.userStats?.completedCount ?? 0 });
+      if (d.dsaProblem) setDsaProblem(d.dsaProblem);
+      setDsaSolvedToday(d.dsaSolved?.dsaSolvedToday ?? false);
+      setHasLcUsername(d.dsaSolved?.hasLcUsername ?? true);
+      setDsaLoading(false);
+
+      const gh = d.githubStatus ?? {};
+      setGhStatus({ hasUsername: gh.hasUsername ?? false, githubUsername: gh.githubUsername, committedToday: gh.committedToday ?? false, commitCount: gh.commitCount ?? 0, alreadyClaimed: gh.alreadyClaimed ?? false, streak: gh.streak ?? 0, loading: false });
+
+      const ct = d.codetime ?? {};
+      setWtStats({ totalSeconds: ct.totalSeconds ?? 0, error: ct.error, loading: false, hasKey: ct.hasKey ?? false });
     } catch (e) {
-      console.error(e);
+      console.error("Challenges fetch error:", e);
+      setDsaLoading(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Kept for DSA retry button
   const fetchDsaData = useCallback(async () => {
     setDsaLoading(true);
     setDsaError(null);
@@ -224,19 +230,12 @@ export default function ChallengesPage() {
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Failed");
       setDsaProblem(data);
-
-      // Check if user already solved today by fetching their profile
-      const userRes = await fetch(`/api/users/${session?.user?.id}`);
-      const userData = await userRes.json();
-      const solvedDates: string[] = userData?.useProfile?.dsaSolvedDates || [];
-      setDsaSolvedToday(solvedDates.includes(data.date));
-      setHasLcUsername(!!userData?.useProfile?.leetcodeUsername);
     } catch (e: any) {
       setDsaError(e.message);
     } finally {
       setDsaLoading(false);
     }
-  }, [session?.user?.id]);
+  }, []);
 
   const verifyDsaSolution = async () => {
     if (!dsaProblem) return;
@@ -259,7 +258,7 @@ export default function ChallengesPage() {
           completedCount: prev.completedCount + 1,
         }));
         toast.success(`🎉 +${data.pointsEarned} points! LeetCode solve verified!`);
-        fetchData(); // refresh leaderboard
+        fetchAllData(); // refresh leaderboard
       } else if (data.error === "NO_USERNAME") {
         setHasLcUsername(false);
         toast.error("Set your LeetCode username in Profile → Edit Profile first!");
@@ -278,88 +277,7 @@ export default function ChallengesPage() {
     }
   };
 
-  const fetchWakatime = useCallback(async () => {
-    setWtStats(p => ({ ...p, loading: true }));
-    try {
-      const res = await fetch("/api/challenges/codetime");
-      const data = await res.json();
-      if (res.ok) {
-        setWtStats({ totalSeconds: data.totalSecondsToday, error: null, loading: false, hasKey: true });
-      } else if (data.error === "NO_CODETIME_KEY") {
-        setWtStats({ totalSeconds: 0, error: null, loading: false, hasKey: false });
-      } else {
-        setWtStats({ totalSeconds: 0, error: data.message || "Failed", loading: false, hasKey: true });
-      }
-    } catch {
-      setWtStats({ totalSeconds: 0, error: "Network Error", loading: false, hasKey: true });
-    }
-  }, []);
-
-  const fetchGithub = useCallback(async () => {
-    try {
-      const res = await fetch("/api/github/commits");
-      const data = await res.json();
-      
-      // Fetch actual GitHub streak from contributions graph
-      let actualStreak = data.streak;
-      let actualCommittedToday = data.committedToday;
-      if (session?.user?.id && data.hasUsername) {
-        try {
-          const contribRes = await fetch(`/api/github/contributions?userId=${session.user.id}`);
-          const contribData = await contribRes.json();
-          if (contribData.weeks && contribData.weeks.length > 0) {
-            const allDays: { date: string; count: number }[] = [];
-            for (const w of contribData.weeks) {
-              for (const d of w) allDays.push(d);
-            }
-            
-            let streak = 0;
-            let committedToday = false;
-            const todayDate = new Date();
-            const localISO = (dt: Date) => {
-              const y = dt.getFullYear();
-              const m = String(dt.getMonth() + 1).padStart(2, "0");
-              const dd = String(dt.getDate()).padStart(2, "0");
-              return `${y}-${m}-${dd}`;
-            };
-            const todayStr = localISO(todayDate);
-            
-            const todayData = allDays.find(a => a.date === todayStr);
-            if (todayData && todayData.count > 0) {
-              committedToday = true;
-            }
-            
-            let checkDate = new Date(todayDate);
-            while (true) {
-              const iso = localISO(checkDate);
-              const dayObj = allDays.find(a => a.date === iso);
-              if (!dayObj) break;
-              
-              if (dayObj.count > 0) {
-                streak++;
-              } else if (iso !== todayStr) {
-                break;
-              }
-              checkDate.setDate(checkDate.getDate() - 1);
-            }
-            actualStreak = Math.max(actualStreak, streak);
-            actualCommittedToday = actualCommittedToday || committedToday;
-          }
-        } catch (e) {
-          console.error("Failed to fetch actual github streak:", e);
-        }
-      }
-      
-      setGhStatus({
-        ...data,
-        streak: actualStreak,
-        committedToday: actualCommittedToday,
-        loading: false
-      });
-    } catch {
-      setGhStatus(p => ({ ...p, loading: false }));
-    }
-  }, [session?.user?.id]);
+  // fetchWakatime and fetchGithub removed — data comes from /api/challenges/all
 
   const claimGithubCommit = async () => {
     setGhClaiming(true);
@@ -371,7 +289,7 @@ export default function ChallengesPage() {
         setCompletedToday(prev => [...prev, "github-daily-commit"]);
         setUserStats(prev => ({ totalPoints: data.totalPoints, completedCount: prev.completedCount + 1 }));
         toast.success(`🎉 +${data.pointsEarned} pts! Daily commit rewarded!`);
-        fetchData();
+        fetchAllData();
       } else if (data.alreadyDone) {
         toast.info("Already claimed today!");
         setGhStatus(p => ({ ...p, alreadyClaimed: true }));
@@ -387,12 +305,9 @@ export default function ChallengesPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetchData();
-      fetchDsaData();
-      fetchWakatime();
-      fetchGithub();
+      fetchAllData();
     }
-  }, [status, fetchData, fetchDsaData, fetchWakatime, fetchGithub]);
+  }, [status, fetchAllData]);
 
   // Timer logic
   useEffect(() => {
@@ -436,7 +351,7 @@ export default function ChallengesPage() {
           completedCount: prev.completedCount + 1,
         }));
         toast.success(`🎉 +${data.pointsEarned} points! Challenge verified!`);
-        fetchData();
+        fetchAllData();
       } else if (data.alreadyDone) {
         toast.error("You already completed this challenge today!");
         resetTimer();

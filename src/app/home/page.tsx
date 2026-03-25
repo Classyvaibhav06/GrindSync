@@ -149,158 +149,62 @@ export default function HomePage() {
   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
-  /* Heartbeat + fetch data */
+  /* Heartbeat + fetch data — single aggregated API call */
   const fetchAll = useCallback(async () => {
     if (!session?.user?.id) return;
-    
-    // Heartbeat every time we hit the page
-    fetch("/api/users/heartbeat", { method: "POST" }).catch(() => {});
 
-    // Cache hit: valid for 60 seconds
-    // Bust early if: weekly commits are stale zeros, OR today's commitCount is 0 despite GitHub being linked
+    // Cache hit: valid for 30 seconds
     const now = Date.now();
     const staleCommits = _dashboardCache?.weeklyCommits === 0 && _dashboardCache?.ghStatus?.hasUsername;
     const staleToday   = _dashboardCache?.ghStatus?.hasUsername && !_dashboardCache?.ghStatus?.commitCount;
     const staleStreak  = _dashboardCache?.ghStatus?.hasUsername && (_dashboardCache?.ghStatus?.streak === 0);
-    if (_dashboardCache && now - (_dashboardCache.lastFetched ?? 0) < 60000 && !staleCommits && !staleToday && !staleStreak) {
+    if (_dashboardCache && now - (_dashboardCache.lastFetched ?? 0) < 30000 && !staleCommits && !staleToday && !staleStreak) {
       setLoading(false);
-      return; 
+      return;
     }
 
     if (!_dashboardCache) setLoading(true);
-    
-    // Temporary object to build the new cache
-    const newCache: typeof _dashboardCache = { lastFetched: Date.now() };
 
-    await Promise.allSettled([
-      // XP + completions
-      fetch("/api/challenges/my-stats").then(r => r.json()).then(d => {
-        const p = { totalPoints: d.totalPoints ?? 0, completedCount: d.completedCount ?? 0 };
-        const act = d.recentCompletions?.slice(0, 3) ?? [];
-        setChallengeStats(p); setRecentActivity(act);
-        newCache.challengeStats = p; newCache.recentActivity = act;
-      }),
-      // GitHub: commits status + contributions streak merged into ONE update
-      // so we never show a stale/wrong streak value first.
-      (async () => {
-        const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    try {
+      const res = await fetch("/api/dashboard");
+      if (!res.ok) throw new Error("Dashboard fetch failed");
+      const d = await res.json();
 
-        try {
-          // Fetch both in parallel
-          const [commRes, contRes] = await Promise.all([
-            fetch("/api/github/commits"),
-            fetch(`/api/github/contributions?userId=${session.user.id}`),
-          ]);
-          const commData = await commRes.json();
-          const contData = await contRes.json();
+      // ── Unpack the single response into all state ──
+      const stats = { totalPoints: d.challengeStats?.totalPoints ?? 0, completedCount: d.challengeStats?.completedCount ?? 0 };
+      setChallengeStats(stats);
+      setRecentActivity(d.recentActivity ?? []);
 
-          // ── Streak + committedToday from contributions (authoritative) ──
-          const allDays: { date: string; count: number }[] = [];
-          if (contData.weeks) {
-            for (const week of contData.weeks) for (const day of week) allDays.push(day);
-          }
+      const gh = d.github ?? {};
+      setGhStatus(gh);
+      setFocusData(gh.focusData ?? []);
+      setWeeklyCommits(gh.weeklyCommits ?? 0);
 
-          const todayDate = new Date();
-          const localISO = (dt: Date) => {
-            const y = dt.getFullYear();
-            const m = String(dt.getMonth() + 1).padStart(2, "0");
-            const dd = String(dt.getDate()).padStart(2, "0");
-            return `${y}-${m}-${dd}`;
-          };
-          const todayStr = localISO(todayDate);
+      setWaka(d.codetime ?? null);
+      setRank(d.rank ?? null);
+      setOnlineCount(d.onlineCount ?? 0);
+      setDsaDaily(d.dsaDaily ?? null);
+      setChallenges(d.challenges ?? []);
 
-          let currentStreak = 0;
-          let committedToday = commData.committedToday ?? false;
-
-          if (allDays.length > 0) {
-            const todayData = allDays.find(a => a.date === todayStr);
-            if (todayData && todayData.count > 0) committedToday = true;
-
-            let checkDate = new Date(todayDate);
-            while (true) {
-              const iso = localISO(checkDate);
-              const dayObj = allDays.find(a => a.date === iso);
-              if (!dayObj) break;
-              if (dayObj.count > 0) {
-                currentStreak++;
-              } else if (iso !== todayStr) {
-                break;
-              }
-              checkDate.setDate(checkDate.getDate() - 1);
-            }
-          }
-
-          // Take the max in case DB streak is legitimately higher (e.g. private commits)
-          const finalStreak = Math.max(currentStreak, commData.streak ?? 0);
-
-          const finalGhStatus = {
-            ...commData,
-            streak: finalStreak,
-            committedToday,
-          };
-
-          // ── Single state update — no flicker ──
-          setGhStatus(finalGhStatus);
-          newCache.ghStatus = finalGhStatus;
-
-          // ── Build focus chart (last 7 calendar days) ──
-          const last7: { day: string; count: number }[] = [];
-          for (let i = 6; i >= 0; i--) {
-            const d2 = new Date(todayDate);
-            d2.setDate(todayDate.getDate() - i);
-            const iso = localISO(d2);
-            const found = allDays.find(a => a.date === iso);
-            last7.push({ day: DAY_LABELS[d2.getDay()], count: found?.count ?? 0 });
-          }
-          const maxCount = Math.max(...last7.map(x => x.count), 1);
-          const fd = last7.map(x => ({
-            day: x.day,
-            count: x.count,
-            h: Math.max(4, Math.round((x.count / maxCount) * 100)),
-          }));
-          const total = last7.reduce((s, x) => s + x.count, 0);
-          setFocusData(fd); newCache.focusData = fd;
-          setWeeklyCommits(total); newCache.weeklyCommits = total;
-
-        } catch {
-          // Fallback: empty chart, streak from DB only if commits API worked
-          const today = new Date().getDay();
-          const fd = Array.from({ length: 7 }, (_, i) => {
-            const dayIdx = (today - 6 + i + 7) % 7;
-            return { day: DAY_LABELS[dayIdx], count: 0, h: 4 };
-          });
-          setFocusData(fd); newCache.focusData = fd;
-          setWeeklyCommits(0); newCache.weeklyCommits = 0;
-        }
-      })(),
-      // CodeTime
-      fetch("/api/challenges/codetime").then(r => r.json()).then(d => {
-        setWaka(d); newCache.waka = d;
-      }),
-      // Leaderboard rank
-      fetch("/api/leaderboard").then(r => r.json()).then(d => {
-        const idx = d.leaderboard?.findIndex((e: any) => e.id === session.user.id);
-        const rnk = (idx !== undefined && idx !== -1) ? idx + 1 : null;
-        setRank(rnk); newCache.rank = rnk;
-      }),
-      // Online devs
-      fetch("/api/users/heartbeat").then(r => r.json()).then(d => {
-        const count = (d.users?.length ?? 0) + 1;
-        setOnlineCount(count); newCache.onlineCount = count;
-      }),
-      // Daily DSA
-      fetch("/api/dsa/daily").then(r => r.json()).then(d => {
-        setDsaDaily(d); newCache.dsaDaily = d;
-      }),
-      // Challenges list
-      fetch("/api/challenges").then(r => r.json()).then(d => {
-        const ch = d.challenges?.slice(0, 3) ?? [];
-        setChallenges(ch); newCache.challenges = ch;
-      }),
-    ]);
+      // Update local cache
+      _dashboardCache = {
+        lastFetched: Date.now(),
+        challengeStats: stats,
+        ghStatus: gh,
+        waka: d.codetime,
+        rank: d.rank,
+        onlineCount: d.onlineCount,
+        dsaDaily: d.dsaDaily,
+        challenges: d.challenges,
+        recentActivity: d.recentActivity,
+        focusData: gh.focusData,
+        weeklyCommits: gh.weeklyCommits,
+      };
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    }
 
     setActiveBar(6);
-    _dashboardCache = newCache;
     setLoading(false);
   }, [session?.user?.id]);
 

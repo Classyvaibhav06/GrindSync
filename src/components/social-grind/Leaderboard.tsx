@@ -36,7 +36,7 @@ const MEDAL = {
     accentBar: "from-amber-400 via-yellow-300 to-amber-500",
     ringColor: "ring-amber-400/70",
     glowShadow: "0 0 28px rgba(245,158,11,0.25)",
-    cardBg: "#1f1f24",
+    cardBg: "bg-[#1f1f24]",
     avatarSize: "w-14 h-14",
     nameSize: "text-[15px]",
   },
@@ -46,7 +46,7 @@ const MEDAL = {
     accentBar: "from-slate-300 via-gray-200 to-slate-400",
     ringColor: "ring-slate-300/60",
     glowShadow: "0 0 20px rgba(148,163,184,0.18)",
-    cardBg: "#1b1b20",
+    cardBg: "bg-[#1b1b20]",
     avatarSize: "w-12 h-12",
     nameSize: "text-sm",
   },
@@ -56,7 +56,7 @@ const MEDAL = {
     accentBar: "from-orange-400 via-amber-500 to-orange-500",
     ringColor: "ring-orange-400/60",
     glowShadow: "0 0 18px rgba(217,119,6,0.15)",
-    cardBg: "#1a1a1e",
+    cardBg: "bg-[#1a1a1e]",
     avatarSize: "w-11 h-11",
     nameSize: "text-sm",
   },
@@ -88,10 +88,10 @@ function TopCard({ entry, pos, isMe }: { entry: LeaderboardEntry; pos: 1 | 2 | 3
         className={cn(
           "relative flex items-center gap-4 rounded-2xl p-4 transition-all duration-300",
           "hover:translate-y-[-1px]",
+          m.cardBg,
           isMe && "ring-1 ring-primary/30"
         )}
         style={{
-          backgroundColor: m.cardBg,
           boxShadow: m.glowShadow,
         }}
       >

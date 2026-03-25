@@ -89,7 +89,8 @@
 .light [class*="bg-[#0e0e13]"] { background-color: #f3f2ee !important; } /* Main app bg: warm bone */
 .light [class*="bg-[#111116]"] { background-color: #ebeae5 !important; } /* Deeper bg */
 .light [class*="bg-[#1b1b20]"] { background-color: #fdfcf8 !important; } /* Cards: soft ivory, not pure white */
-.light [class*="bg-[#1f1f26]"] { background-color: #eeebe3 !important; } /* Hover/subtle states */
+.light [class*="bg-[#1f1f26]"], .light [class*="bg-[#1f1f24]"] { background-color: #eeebe3 !important; } /* Hover/subtle states & 1st Place Card */
+.light [class*="bg-[#1a1a1e]"] { background-color: #faf9f4 !important; } /* 3rd Place Card */
 .light [class*="bg-[#232329]"] { background-color: #e4e1d7 !important; } /* Active states */
 
 /* ── Primary text (Warm darks instead of harsh black) ── */

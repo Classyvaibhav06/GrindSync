@@ -1,0 +1,395 @@
+﻿
+> socialgrind@0.1.0 lint
+> eslint
+
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\.agents\skills\react-components\examples\gold-standard-card.tsx
+  20:10  warning  'cardData' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\.agents\skills\remotion\examples\WalkthroughComposition.tsx
+   2:9   warning  'Sequence' is defined but never used         @typescript-eslint/no-unused-vars
+  19:15  warning  'width' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  19:22  warning  'height' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\.agents\skills\remotion\resources\screen-slide-template.tsx
+  16:3  warning  'width' is defined but never used   @typescript-eslint/no-unused-vars
+  17:3  warning  'height' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\.agents\skills\shadcn-ui\examples\data-table.tsx
+  157:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\.agents\skills\shadcn-ui\examples\data-table.tsx:157:17
+  155 |   const [rowSelection, setRowSelection] = React.useState({})
+  156 |
+> 157 |   const table = useReactTable({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  158 |     data,
+  159 |     columns,
+  160 |     onSortingChange: setSorting,  react-hooks/incompatible-library
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\challenges\codetime\route.ts
+  7:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\challenges\my-stats\route.ts
+  7:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\challenges\route.ts
+  1:10  warning  'NextRequest' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\codetime\summary\route.ts
+  7:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\dsa\daily\route.ts
+  134:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\dsa\verify\route.ts
+  124:51  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\github\commits\route.ts
+    8:28  warning  'req' is defined but never used                    @typescript-eslint/no-unused-vars
+   53:11  warning  'todayUTC' is assigned a value but never used      @typescript-eslint/no-unused-vars
+   54:11  warning  'yesterdayUTC' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   57:11  warning  'localDateStr' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   64:11  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  114:27  warning  'req' is defined but never used                    @typescript-eslint/no-unused-vars
+  144:11  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  160:57  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\github\contributions\route.ts
+  103:63  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  104:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\github\repos\route.ts
+  48:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\notifications\route.ts
+   8:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+  33:29  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\users\[id]\follow\route.ts
+  54:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  58:55  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  64:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\api\users\search\route.ts
+  26:13  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\challenges\page.tsx
+   19:3   warning  'IconBrandLeetcode' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  234:17  error    Unexpected any. Specify a different type                                                                                    @typescript-eslint/no-explicit-any
+  274:14  warning  'e' is defined but never used                                                                                               @typescript-eslint/no-unused-vars
+  332:17  error    'checkDate' is never reassigned. Use 'const' instead                                                                        prefer-const
+  419:6   warning  React Hook useEffect has a missing dependency: 'handleChallengeComplete'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\chat\page.tsx
+   95:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  112:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  220:6   warning  React Hook useCallback has a missing dependency: 'openChat'. Either include it or remove the dependency array                                                                                                                                                                            react-hooks/exhaustive-deps
+  447:25  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  527:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  586:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  651:29  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  695:31  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  745:43  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\complete-profile\page.tsx
+  40:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\home\page.tsx
+    5:29  warning  'IconPlayerPlay' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+    6:3   warning  'IconMedal' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+    7:48  warning  'IconLoader2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+    8:32  warning  'IconClock' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   25:11  warning  'OnlineUser' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  120:20  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  144:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  150:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\home\page.tsx:150:21
+  148 |
+  149 |   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
+> 150 |   useEffect(() => { setSidebarOpen(false); }, [pathname]);
+      |                     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  151 |
+  152 |   /* Heartbeat + fetch data */
+  153 |   const fetchAll = useCallback(async () => {  react-hooks/set-state-in-effect
+  153:32  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `session`, but the source dependencies were [session?.user?.id]. Inferred less specific property than source.
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\home\page.tsx:153:32
+  151 |
+  152 |   /* Heartbeat + fetch data */
+> 153 |   const fetchAll = useCallback(async () => {
+      |                                ^^^^^^^^^^^^^
+> 154 |     if (!session?.user?.id) return;
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 155 |     
+      ΓÇª
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 304 |     setLoading(false);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 305 |   }, [session?.user?.id]);
+      | ^^^^ Could not preserve existing manual memoization
+  306 |
+  307 |   useEffect(() => { fetchAll(); }, [fetchAll]);
+  308 |                                             react-hooks/preserve-manual-memoization
+  219:17  error    'checkDate' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          prefer-const
+  282:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  307:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\home\page.tsx:307:21
+  305 |   }, [session?.user?.id]);
+  306 |
+> 307 |   useEffect(() => { fetchAll(); }, [fetchAll]);
+      |                     ^^^^^^^^ Avoid calling setState() directly within an effect
+  308 |
+  309 |   // Heartbeat every 60s
+  310 |   useEffect(() => {                                                                                                                          react-hooks/set-state-in-effect
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\login\page.tsx
+  54:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\network\page.tsx
+    9:21  warning  'useSearchParams' is defined but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+   20:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   21:46  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   46:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  248:9   error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  258:13  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\profile\[id]\page.tsx
+    5:10  warning  'Button' is defined but never used                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   10:44  warning  'IconTrophy' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   11:3   warning  'IconCode' is defined but never used                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   76:17  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  130:12  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  130:73  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  151:17  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  161:17  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  253:5   error    '_profileCache' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                 prefer-const
+  255:11  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  256:12  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  266:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  272:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  298:27  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  303:21  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  333:15  error    'rDataObj' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                      prefer-const
+  370:32  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  389:23  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  395:25  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  413:49  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  415:48  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  459:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\register\page.tsx
+  50:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\stats\page.tsx
+  105:5   error  '_statsCache' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       prefer-const
+  107:11  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  121:38  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  139:7   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\stats\page.tsx:139:7
+  137 |     const staleGitHub = cached?.data?.githubStatus?.hasUsername && !cached?.data?.githubStatus?.commitCount;
+  138 |     if (cached && Date.now() - cached.timestamp < 60000 && !staleGitHub) {
+> 139 |       setChallengeStats(cached.data.challengeStats);
+      |       ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  140 |       setGithubStatus(cached.data.githubStatus);
+  141 |       setWakaStats(cached.data.wakaStats);
+  142 |       setLeaderPos(cached.data.leaderPos);  react-hooks/set-state-in-effect
+  150:17  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  159:50  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  197:15  error  'checkDate' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         prefer-const
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\app\users\page.tsx
+   21:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   36:6   warning  React Hook useEffect has a missing dependency: 'searchUsers'. Either include it or remove the dependency array                                                                                                                                                                           react-hooks/exhaustive-deps
+  112:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\ContributionGraph.tsx
+    3:17  warning  'useCallback' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+    4:51  warning  'IconX' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  221:60  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\ContributionGraph.tsx:221:60
+  219 |                 className="absolute z-[9999] w-max rounded-lg shadow-2xl transition-all duration-200 pointer-events-none"
+  220 |                 style={{
+> 221 |                   left: Math.min(Math.max(tooltip.x, 60), (containerRef.current?.scrollWidth || 1000) - 60),
+      |                                                            ^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  222 |                   // Very tight offset for the new tiny footprint
+  223 |                   top: tooltip.y - 42,
+  224 |                   transform: "translateX(-50%)",                       react-hooks/refs
+  221:60  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\ContributionGraph.tsx:221:60
+  219 |                 className="absolute z-[9999] w-max rounded-lg shadow-2xl transition-all duration-200 pointer-events-none"
+  220 |                 style={{
+> 221 |                   left: Math.min(Math.max(tooltip.x, 60), (containerRef.current?.scrollWidth || 1000) - 60),
+      |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  222 |                   // Very tight offset for the new tiny footprint
+  223 |                   top: tooltip.y - 42,
+  224 |                   transform: "translateX(-50%)",          react-hooks/refs
+  221:60  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\ContributionGraph.tsx:221:60
+  219 |                 className="absolute z-[9999] w-max rounded-lg shadow-2xl transition-all duration-200 pointer-events-none"
+  220 |                 style={{
+> 221 |                   left: Math.min(Math.max(tooltip.x, 60), (containerRef.current?.scrollWidth || 1000) - 60),
+      |                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  222 |                   // Very tight offset for the new tiny footprint
+  223 |                   top: tooltip.y - 42,
+  224 |                   transform: "translateX(-50%)",  react-hooks/refs
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\FloatingNav.tsx
+  37:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\FloatingNav.tsx:37:5
+  35 |     if (!session?.user?.id) return;
+  36 |     // Show session image immediately as placeholder
+> 37 |     setAvatarSrc(session.user.image ?? null);
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  38 |     // Then fetch the latest from DB
+  39 |     fetch(`/api/users/${session.user.id}/avatar`)
+  40 |       .then((r) => r.json())  react-hooks/set-state-in-effect
+  43:6   warning  React Hook useEffect has a missing dependency: 'session.user.image'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  87:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @next/next/no-img-element
+  99:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\GlobalGuard.tsx
+   11:56  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+   73:32  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+   91:30  error    Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+   94:16  warning  'err' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+  100:6   warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\Leaderboard.tsx
+  72:97  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\Leaderboard.tsx:72:97
+  70 |       <div className="w-9 h-9 rounded-full bg-white/[0.04] animate-pulse" />
+  71 |       <div className="flex-1 space-y-2">
+> 72 |         <div className="h-3 bg-white/[0.04] rounded-full animate-pulse" style={{ width: `${50 + Math.random() * 30}%` }} />
+     |                                                                                                 ^^^^^^^^^^^^^ Cannot call impure function
+  73 |         <div className="h-2.5 bg-white/[0.04] rounded-full animate-pulse w-20" />
+  74 |       </div>
+  75 |       <div className="w-14 h-5 bg-white/[0.04] rounded-full animate-pulse" />  react-hooks/purity
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\NotificationBell.tsx
+   18:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-explicit-any
+   25:5   error    Error: Cannot access variable before it is declared
+
+`fetchNotifications` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\NotificationBell.tsx:25:5
+  23 |
+  24 |   useEffect(() => {
+> 25 |     fetchNotifications();
+     |     ^^^^^^^^^^^^^^^^^^ `fetchNotifications` accessed before it is declared
+  26 |   }, []);
+  27 |
+  28 |   // Close on outside click
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\social-grind\NotificationBell.tsx:37:3
+  35 |   }, []);
+  36 |
+> 37 |   async function fetchNotifications() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 38 |     try {
+     | ^^^^^^^^^
+> 39 |       const res = await fetch("/api/notifications");
+     | ^^^^^^^^^
+> 40 |       if (res.ok) {
+     | ^^^^^^^^^
+> 41 |         const data = await res.json();
+     | ^^^^^^^^^
+> 42 |         setNotifications(data.notifications || []);
+     | ^^^^^^^^^
+> 43 |       }
+     | ^^^^^^^^^
+> 44 |     } catch {}
+     | ^^^^^^^^^
+> 45 |   }
+     | ^^^^ `fetchNotifications` is declared here
+  46 |
+  47 |   async function markAllRead() {
+  48 |     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));  react-hooks/immutability
+  111:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @next/next/no-img-element
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\theme-toggle.tsx
+  11:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\components\theme-toggle.tsx:11:21
+   9 |
+  10 |   // Avoid hydration mismatch ΓÇö only render after client mount
+> 11 |   useEffect(() => { setMounted(true); }, []);
+     |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  12 |   if (!mounted) {
+  13 |     return <div className={`theme-toggle-skeleton ${className ?? ""}`} aria-hidden />;
+  14 |   }  react-hooks/set-state-in-effect
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\lib\auth.ts
+  66:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\lib\mongodb.ts
+  16:7  error  'globalWithMongo' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\src\types\next-auth.d.ts
+  1:8  warning  'NextAuth' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\vaibhav ghoshi\OneDrive\Desktop\socialgrind\vscode-extension\extension.js
+   1:16  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+   2:7   warning  'https' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   2:15  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+  44:26  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+  45:48  warning  'res' is defined but never used             @typescript-eslint/no-unused-vars
+  49:30  warning  'e' is defined but never used               @typescript-eslint/no-unused-vars
+
+Γ£û 129 problems (75 errors, 54 warnings)
+  7 errors and 0 warnings potentially fixable with the `--fix` option.
+

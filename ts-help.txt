@@ -1,0 +1,4 @@
+﻿Usage: testsprite-mcp server [options]
+
+Options:
+  -h, --help  display help for command

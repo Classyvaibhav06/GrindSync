@@ -1,0 +1,9 @@
+{"timestamp":"2026-03-25T17:17:34.528Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-03-25T17:17:34.547Z","level":"info","message":"HTTP server started successfully on port 58109"}
+{"timestamp":"2026-03-25T17:36:23.070Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-03-25T17:36:23.112Z","level":"info","message":"HTTP server started successfully on port 57207"}
+{"timestamp":"2026-03-25T17:37:56.145Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-03-25T17:37:56.180Z","level":"info","message":"HTTP server started successfully on port 55630"}
+{"timestamp":"2026-03-25T17:38:02.257Z","level":"info","message":"GET /favicon.ico 404 2ms"}
+{"timestamp":"2026-03-25T17:43:57.681Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-03-25T17:43:57.723Z","level":"info","message":"HTTP server started successfully on port 64577"}

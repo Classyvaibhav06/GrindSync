@@ -36,7 +36,8 @@ query($login: String!, $from: DateTime!, $to: DateTime!) {
 }`;
 
 function localISO(dt: Date) {
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  // Always use IST to ensure the streak calculations align with the user's local day
+  return dt.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 /* ── Main aggregated stats endpoint ──────────────────── */

@@ -47,8 +47,15 @@ function seededRandom(seed: number) {
   let s = seed;
   return () => { s = (s + 0x6d2b79f5)|0; let t = Math.imul(s^(s>>>15),1|s); t = (t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
 }
-function todayUTC() { const n = new Date(); return `${n.getUTCFullYear()}-${String(n.getUTCMonth()+1).padStart(2,"0")}-${String(n.getUTCDate()).padStart(2,"0")}`; }
-function localISO(dt: Date) { return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`; }
+function todayUTC(): string {
+  // Use IST (Kolkata) to synchronize with India midnight
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+function localISO(dt: Date) {
+  // Always use IST to ensure the streak calculations align with the user's local day
+  return dt.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 /* ── GitHub contributions query ──────────────────────── */
 const GH_CONTRIB_QUERY = `

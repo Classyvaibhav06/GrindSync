@@ -85,15 +85,13 @@ function seededRandom(seed: number) {
 }
 
 function todayUTC(): string {
-  const n = new Date();
-  return `${n.getUTCFullYear()}-${String(n.getUTCMonth() + 1).padStart(2, "0")}-${String(n.getUTCDate()).padStart(2, "0")}`;
+  // Use IST (Kolkata) to synchronize with India midnight
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 function localISO(dt: Date) {
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  // Always use IST to ensure the streak calculations align with the user's local day
+  return dt.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
 /* ── Main aggregated endpoint ────────────────────────── */

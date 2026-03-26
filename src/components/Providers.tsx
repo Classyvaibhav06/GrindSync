@@ -3,6 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { GlobalGuard } from "./social-grind/GlobalGuard";
+import { RoutePrefetcher } from "./social-grind/RoutePrefetcher";
 import { Toaster } from "sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange={false}
     >
       <SessionProvider>
+        <RoutePrefetcher />
         <GlobalGuard>{children}</GlobalGuard>
         <Toaster
           theme="dark"

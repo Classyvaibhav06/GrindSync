@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getCache, setCache } from "@/lib/redis";
 
 /* ── Types ─────────────────────────────────────────── */
 export interface ContributionDay {
@@ -53,6 +54,13 @@ export async function GET(req: NextRequest) {
 
     if (!githubUsername) {
       return NextResponse.json({ error: "NO_GITHUB", weeks: [], total: 0 }, { status: 200 });
+    }
+
+    /* ── Check Redis Cache ───────────────────────────── */
+    const cacheKey = `github:contributions:${githubUsername}`;
+    const cachedData = await getCache<{ weeks: any[]; total: number }>(cacheKey);
+    if (cachedData) {
+      return NextResponse.json({ ...cachedData, githubUsername });
     }
 
     /* ── Call GitHub GraphQL API ─────────────────────── */
@@ -108,9 +116,16 @@ export async function GET(req: NextRequest) {
       }))
     );
 
-    return NextResponse.json({
+    const result = {
       weeks,
       total: calendar.totalContributions,
+    };
+
+    // Cache for 5 minutes (300 seconds)
+    await setCache(cacheKey, result, 300);
+
+    return NextResponse.json({
+      ...result,
       githubUsername,
     });
   } catch (err) {

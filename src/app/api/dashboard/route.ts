@@ -4,18 +4,10 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-/* ── In-memory server-side cache ────────────────────── */
-const cache = new Map<string, { data: any; ts: number }>();
-const CACHE_TTL = 30_000; // 30 seconds
+import { getCache, setCache } from "@/lib/redis";
 
-function getCached(key: string) {
-  const entry = cache.get(key);
-  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
-  return null;
-}
-function setCache(key: string, data: any) {
-  cache.set(key, { data, ts: Date.now() });
-}
+const CACHE_TTL = 30; // 30 seconds for dashboard data
+const DSA_TTL = 86400; // 24 hours for daily challenge
 
 /* ── GitHub GraphQL query (for contributions) ─────────── */
 const GH_CONTRIBUTIONS_QUERY = `
@@ -105,8 +97,9 @@ export async function GET(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // Check server-side cache
-    const cached = getCached(`dashboard:${userId}`);
+    // Check Redis cache
+    const cacheKey = `dashboard:${userId}`;
+    const cached = await getCache(cacheKey);
     if (cached) {
       return NextResponse.json(cached, {
         headers: { "Cache-Control": "private, max-age=15, stale-while-revalidate=30" },
@@ -323,10 +316,10 @@ export async function GET(req: NextRequest) {
         return { totalSecondsToday: mins * 60 };
       })() : Promise.resolve({ error: "NO_CODETIME_KEY" }),
 
-      // DSA Daily (cached for the whole day)
       (async () => {
         const dateKey = todayUTC();
-        const dsaCached = getCached(`dsa:${dateKey}`);
+        const dsaKey = `dsa:${dateKey}`;
+        const dsaCached = await getCache(dsaKey);
         if (dsaCached) return dsaCached;
 
         try {
@@ -357,7 +350,7 @@ export async function GET(req: NextRequest) {
                 acRate: Math.round(q.acRate),
                 leetcodeUrl: `https://leetcode.com/problems/${q.titleSlug}/`,
               };
-              setCache(`dsa:${dateKey}`, payload);
+              setCache(dsaKey, payload, DSA_TTL);
               return payload;
             }
           }
@@ -371,7 +364,7 @@ export async function GET(req: NextRequest) {
           title: f.title, difficulty: "Easy", tags: f.tags, acRate: 55,
           leetcodeUrl: `https://leetcode.com/problems/${f.slug}/`,
         };
-        setCache(`dsa:${dateKey}`, payload);
+        setCache(dsaKey, payload, DSA_TTL);
         return payload;
       })(),
     ]);
@@ -399,8 +392,8 @@ export async function GET(req: NextRequest) {
       challenges: CHALLENGES_LIST.slice(0, 3),
     };
 
-    // Cache the result server-side
-    setCache(`dashboard:${userId}`, result);
+    // Cache the result in Redis
+    await setCache(cacheKey, result, CACHE_TTL);
 
     return NextResponse.json(result, {
       headers: { "Cache-Control": "private, max-age=15, stale-while-revalidate=30" },

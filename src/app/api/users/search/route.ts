@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { getCache, setCache } from "@/lib/redis";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ users: [] });
     }
 
+    /* ── Redis Cache Search ────────────────────────── */
+    const cacheKey = `search:${q.toLowerCase()}`;
+    const cached = await getCache<any>(cacheKey);
+    if (cached) return NextResponse.json({ users: cached });
+
     const client = await clientPromise;
     const db = client.db();
 
@@ -24,10 +30,11 @@ export async function GET(req: NextRequest) {
          excludeIdFilter = { _id: { $ne: new ObjectId(session.user.id!) } };
       }
     } catch(e) {
-      console.error("Invalid ObjectId for current user:", session?.user?.id);
+      // Not logged in or invalid ID
     }
 
     // Search users by name case-insensitively using regex
+    // IMPORTANT: image is removed from projection to save bandwidth
     const users = await db
       .collection("users")
       .find(
@@ -35,13 +42,17 @@ export async function GET(req: NextRequest) {
           name: { $regex: q, $options: "i" },
           ...excludeIdFilter
         },
-        { projection: { name: 1, image: 1, email: 1, username: 1 } }
+        { projection: { name: 1, email: 1, username: 1 } }
       )
       .limit(10)
       .toArray();
 
+    // Cache the result for 60 seconds
+    await setCache(cacheKey, users, 60);
+
     return NextResponse.json({ users });
   } catch (error) {
-    return NextResponse.json({ error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    console.error("Search error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -396,7 +396,9 @@ export async function GET(req: NextRequest) {
     await setCache(cacheKey, result, CACHE_TTL);
 
     return NextResponse.json(result, {
-      headers: { "Cache-Control": "private, max-age=15, stale-while-revalidate=30" },
+      headers: { 
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" 
+      },
     });
   } catch (err) {
     console.error("Dashboard aggregated API error:", err);

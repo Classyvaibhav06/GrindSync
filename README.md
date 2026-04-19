@@ -2,7 +2,7 @@
 # 🚀 GrindSync
 **Elevate Your Grind. Sync Your Progress.**
 
-GrindSync is a "Proof of Progress" social platform designed for developers. It eliminates "tutorial hell" by automatically tracking your DSA performance (LeetCode) and project contributions (GitHub), allowing you to build in public and collaborate with like-minded developers.
+GrindSync is a "Proof of Progress" social platform designed for developers. It eliminates "tutorial hell" by automatically tracking your DSA performance (LeetCode) and project contributions (GitHub), allowing you to build in public and collaborate with like-minded developers. and much more
 
 ---
 

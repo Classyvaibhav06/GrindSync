@@ -1,10 +1,10 @@
 import { SectionLoading } from "@/components/social-grind/SectionLoading";
 
-export default function ChatLoading() {
+export default function ChallengesLoading() {
   return (
     <SectionLoading
-      title="Loading chat"
-      subtitle="Opening your conversations"
+      title="Loading challenges"
+      subtitle="Assembling daily tasks"
       rows={4}
     />
   );

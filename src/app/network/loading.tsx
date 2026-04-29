@@ -1,10 +1,10 @@
 import { SectionLoading } from "@/components/social-grind/SectionLoading";
 
-export default function ChatLoading() {
+export default function NetworkLoading() {
   return (
     <SectionLoading
-      title="Loading chat"
-      subtitle="Opening your conversations"
+      title="Loading network"
+      subtitle="Preparing your connections"
       rows={4}
     />
   );

@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   IconTrophy, IconFlame, IconCode, IconBrandGithub, IconClock,
   IconArrowUpRight, IconChartBar,
-  IconStar, IconLayoutDashboard, IconUsers, IconMessageCircle,
+  IconStar, IconLayoutDashboard, IconUsers,
   IconSettings, IconLogout, IconChevronRight, IconBolt,
 } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -200,7 +200,6 @@ export default function StatsPage() {
           {[
             { icon: IconLayoutDashboard, label: "Dashboard", href: "/home" },
             { icon: IconTrophy,          label: "Challenges", href: "/challenges" },
-            { icon: IconMessageCircle,   label: "Chat",       href: "/chat" },
             { icon: IconUsers,           label: "Discover",   href: "/users" },
             { icon: IconChartBar,        label: "Stats",      href: "/stats", active: true },
             { icon: IconSettings,        label: "Settings",   href: "#" },

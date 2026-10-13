@@ -10,7 +10,6 @@ import { IconMessageCircle } from "@tabler/icons-react";
 
 const navItems = [
   { name: "Home", link: "/home" },
-  { name: "Chat", link: "/chat" },
   { name: "Discover", link: "/users" },
   { name: "Network", link: "/network" },
 ];

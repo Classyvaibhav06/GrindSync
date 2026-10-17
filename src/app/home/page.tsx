@@ -56,6 +56,7 @@ function UserAvatar({ userId, sessionImage, userName }: { userId: string; sessio
 const NAV_ITEMS = [
   { icon: IconLayoutDashboard, label: "Dashboard",  href: "/home" },
   { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
+  { icon: IconMessageCircle,    label: "Chat",       href: "/chat" },
   { icon: IconUsers,            label: "Discover",   href: "/users" },
   { icon: IconChartBar,         label: "Stats",      href: "/stats" },
   { icon: IconSettings,         label: "Settings",   href: "#" },

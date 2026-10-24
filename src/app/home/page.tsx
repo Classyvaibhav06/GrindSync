@@ -15,6 +15,7 @@ import Leaderboard from "@/components/social-grind/Leaderboard";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NAV_ITEMS, MOBILE_NAV } from "@/lib/nav";
 
 
 /* ── Types ──────────────────────────────────────────── */
@@ -52,21 +53,6 @@ function UserAvatar({ userId, sessionImage, userName }: { userId: string; sessio
     </Avatar>
   );
 }
-
-const NAV_ITEMS = [
-  { icon: IconLayoutDashboard, label: "Dashboard",  href: "/home" },
-  { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
-  { icon: IconMessageCircle,    label: "Chat",       href: "/chat" },
-  { icon: IconUsers,            label: "Discover",   href: "/users" },
-  { icon: IconChartBar,         label: "Stats",      href: "/stats" },
-  { icon: IconSettings,         label: "Settings",   href: "#" },
-];
-const MOBILE_NAV = [
-  { icon: IconLayoutDashboard, label: "Home",       href: "/home" },
-  { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
-  { icon: IconChartBar,         label: "Stats",      href: "/stats" },
-  { icon: IconUsers,            label: "Discover",   href: "/users" },
-];
 
 /* ── Tier helper ─────────────────────────────────────── */
 const TIERS = [
@@ -109,6 +95,7 @@ function KpiCard({ label, value, chip, chipColor, loading = false }: {
 }
 
 /* ── Global Cache (Client-side) ───────────────────────── */
+interface Reminders { dsaDone: boolean; commitDone: boolean; challengeDone: boolean; commitStreak: number }
 let _dashboardCache: {
   challengeStats?: ChallengeStats;
   ghStatus?: GitHubStatus;
@@ -120,8 +107,14 @@ let _dashboardCache: {
   recentActivity?: any[];
   focusData?: { day: string; h: number; count: number }[];
   weeklyCommits?: number;
+  reminders?: Reminders | null;
   lastFetched?: number;
 } | null = null;
+
+// IST day key, matching the server-side streak day boundaries.
+function istToday() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
 
 /* ══ Main Page ══════════════════════════════════════════ */
 export default function HomePage() {
@@ -144,7 +137,21 @@ export default function HomePage() {
   const [recentActivity, setRecentActivity] = useState<any[]>(_dashboardCache?.recentActivity ?? []);
   const [focusData, setFocusData] = useState<{ day: string; h: number; count: number }[]>(_dashboardCache?.focusData ?? []);
   const [weeklyCommits, setWeeklyCommits] = useState<number>(_dashboardCache?.weeklyCommits ?? 0);
+  const [reminders, setReminders] = useState<Reminders | null>(_dashboardCache?.reminders ?? null);
   const [loading, setLoading] = useState(!_dashboardCache);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  /* Streak banner is dismissible once per IST day */
+  useEffect(() => {
+    try {
+      const key = `gs-streak-banner-${istToday()}`;
+      if (typeof window !== "undefined" && localStorage.getItem(key) === "1") setBannerDismissed(true);
+    } catch { /* private mode etc. */ }
+  }, []);
+  const dismissBanner = () => {
+    try { localStorage.setItem(`gs-streak-banner-${istToday()}`, "1"); } catch {}
+    setBannerDismissed(true);
+  };
 
   useEffect(() => { if (status === "unauthenticated") router.push("/login"); }, [status, router]);
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -185,6 +192,7 @@ export default function HomePage() {
       setOnlineCount(d.onlineCount ?? 0);
       setDsaDaily(d.dsaDaily ?? null);
       setChallenges(d.challenges ?? []);
+      setReminders(d.reminders ?? null);
 
       // Update local cache
       _dashboardCache = {
@@ -199,6 +207,7 @@ export default function HomePage() {
         recentActivity: d.recentActivity,
         focusData: gh.focusData,
         weeklyCommits: gh.weeklyCommits,
+        reminders: d.reminders ?? null,
       };
     } catch (err) {
       console.error("Dashboard fetch error:", err);
@@ -329,6 +338,49 @@ export default function HomePage() {
 
         {/* Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+
+          {/* ── Streak reminder banner ─────────────────── */}
+          {reminders && [reminders.dsaDone, reminders.commitDone, reminders.challengeDone].some((x) => !x) && !bannerDismissed && (
+            <div className="relative rounded-2xl p-4 sm:p-5 overflow-hidden border border-orange-500/25"
+              style={{ background: "linear-gradient(120deg, rgba(249,115,22,0.10), rgba(139,37,244,0.08))" }}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
+                  <IconFlame size={18} className="text-orange-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-[#e4e1e9]">
+                    {reminders.commitStreak > 0
+                      ? `Don't break your ${reminders.commitStreak}-day streak!`
+                      : "Your daily grind awaits!"}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {[
+                      { label: "DSA problem", done: reminders.dsaDone },
+                      { label: "GitHub commit", done: reminders.commitDone },
+                      { label: "Challenge", done: reminders.challengeDone },
+                    ].map(({ label, done }) => (
+                      <span key={label} className={cn(
+                        "flex items-center gap-1 text-[10px] font-black rounded-full px-2 py-1 border",
+                        done ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-orange-400 bg-orange-500/10 border-orange-500/25"
+                      )}>
+                        {done && <IconCheck size={10} />} {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Link href="/challenges">
+                    <button className="text-[11px] font-black text-white bg-primary rounded-full px-3 py-2 hover:bg-primary/90 transition-colors">
+                      Do them →
+                    </button>
+                  </Link>
+                  <button onClick={dismissBanner} className="text-[#6b7a99] hover:text-[#e4e1e9] transition-colors no-min-size p-1">
+                    <IconX size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── KPI Row — real data ────────────────────── */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">

@@ -380,6 +380,50 @@ export async function GET(req: NextRequest) {
     const ctData = codetimeResult.status === "fulfilled" ? codetimeResult.value : { error: "CODETIME_ERROR" };
     const dsaData = dsaResult.status === "fulfilled" ? dsaResult.value : null;
 
+    // ── Streak reminders ──────────────────────────────
+    // dsaDone comes from the verified-problem dates (IST day keys), commitDone
+    // from GitHub activity, challengeDone from any timer challenge claimed today.
+    const todayKey = todayUTC();
+    const dsaDone = (user?.dsaSolvedDates ?? []).includes(todayKey);
+    const commitDone = !!ghData.committedToday;
+    const challengeDone = todayCompletions.length > 0;
+    const doneCount = [dsaDone, commitDone, challengeDone].filter(Boolean).length;
+    const commitStreak = ghData.streak ?? 0;
+
+    const reminders = { dsaDone, commitDone, challengeDone, commitStreak };
+
+    // One notification per IST day when dailies are missing (fire-and-forget).
+    if (doneCount < 3) {
+      const missing = 3 - doneCount;
+      (async () => {
+        try {
+          const istMidnight = new Date(`${todayKey}T00:00:00+05:30`);
+          const existing = await db.collection("notifications").findOne({
+            recipientId: userOid,
+            type: "streak-reminder",
+            createdAt: { $gte: istMidnight },
+          });
+          if (existing) return;
+          await db.collection("notifications").insertOne({
+            recipientId: userOid,
+            actorId: userOid,
+            actorName: "GrindSync",
+            actorImage: null,
+            actorUsername: "grindsync",
+            type: "streak-reminder",
+            message:
+              commitStreak > 0
+                ? `Don't break your ${commitStreak}-day streak — ${missing} ${missing === 1 ? "daily" : "dailies"} left today!`
+                : `${missing} ${missing === 1 ? "daily" : "dailies"} left today — start a streak! 🔥`,
+            read: false,
+            createdAt: new Date(),
+          });
+        } catch (err) {
+          console.error("Streak reminder insert error:", err);
+        }
+      })();
+    }
+
     const result = {
       challengeStats,
       completedToday: todayCompletions.map(c => c.challengeId),
@@ -390,6 +434,7 @@ export async function GET(req: NextRequest) {
       onlineCount: (onlineUsers.length) + 1,
       dsaDaily: dsaData,
       challenges: CHALLENGES_LIST.slice(0, 3),
+      reminders,
     };
 
     // Cache the result in Redis

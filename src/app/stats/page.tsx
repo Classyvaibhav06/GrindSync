@@ -1,17 +1,19 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   IconTrophy, IconFlame, IconCode, IconBrandGithub, IconClock,
-  IconArrowUpRight, IconChartBar,
-  IconStar, IconLayoutDashboard, IconUsers, IconMessageCircle,
-  IconSettings, IconLogout, IconChevronRight, IconBolt,
+  IconArrowUpRight,
+  IconStar, IconLogout, IconChevronRight, IconBolt,
+  IconBrain, IconLoader2,
 } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { signOut } from "next-auth/react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { NAV_ITEMS, MOBILE_NAV } from "@/lib/nav";
 
 /* ── Types ─────────────────────────────────────────── */
 interface ChallengeStats {
@@ -32,6 +34,14 @@ interface WakaStats {
 }
 interface LeaderboardPos { rank: number; total: number }
 interface TopLang { lang: string; count: number; repoPct: number }
+interface TopicBreakdown { topic: string; solved: number; lastSolved: string | null }
+interface TopicAnalysis {
+  totalVerifiedProblems: number;
+  breakdown: TopicBreakdown[];
+  focusAreas: string[];
+  untouchedTopics: number;
+  weakTopics: string[];
+}
 
 /* ── Helpers ─────────────────────────────────────────── */
 function fmtTime(secs: number) {
@@ -48,13 +58,6 @@ const LANG_COLORS: Record<string, string> = {
   Ruby: "#701516", PHP: "#4F5D95", HTML: "#e34c26", CSS: "#563d7c",
   Dart: "#00B4AB", Vue: "#41b883", Shell: "#89e051",
 };
-
-const MOBILE_NAV = [
-  { icon: IconLayoutDashboard, label: "Home",      href: "/home" },
-  { icon: IconTrophy,           label: "Challenges", href: "/challenges" },
-  { icon: IconChartBar,         label: "Stats",      href: "/stats" },
-  { icon: IconUsers,            label: "Discover",   href: "/users" },
-];
 
 /* ── Stat Card ─────────────────────────────────────── */
 function StatCard({
@@ -113,6 +116,7 @@ let _statsCache: {
 export default function StatsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(null);
   const [githubStatus, setGithubStatus] = useState<GitHubStatus | null>(null);
@@ -121,6 +125,11 @@ export default function StatsPage() {
   const [repos, setRepos] = useState<any[]>([]);
   const [topLangs, setTopLangs] = useState<TopLang[]>([]);
   const [loading, setLoading] = useState(true);
+
+  /* weak-topic analysis */
+  const [topicAnalysis, setTopicAnalysis] = useState<TopicAnalysis | null>(null);
+  const [weakTopics, setWeakTopics] = useState<string[]>([]);
+  const [savingWeak, setSavingWeak] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -163,6 +172,37 @@ export default function StatsPage() {
       .finally(() => setLoading(false));
   }, [session]);
 
+  /* Weak-topic analysis: auto breakdown + manual weak topics */
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetch("/api/analysis/topics")
+      .then(r => r.json())
+      .then(d => {
+        if (d.breakdown) {
+          setTopicAnalysis(d);
+          setWeakTopics(d.weakTopics ?? []);
+        }
+      })
+      .catch(err => console.error("Topic analysis fetch error:", err));
+  }, [session?.user?.id]);
+
+  const toggleWeakTopic = (topic: string) => {
+    setWeakTopics(prev => {
+      const next = prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic];
+      setSavingWeak(true);
+      fetch("/api/analysis/topics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weakTopics: next }),
+      })
+        .then(r => { if (!r.ok) throw new Error(); })
+        .then(() => toast.success("Weak topics saved"))
+        .catch(() => toast.error("Could not save weak topics"))
+        .finally(() => setSavingWeak(false));
+      return next;
+    });
+  };
+
   if (status === "loading") return (
     <div className="min-h-screen bg-[#0e0e13] flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -196,19 +236,12 @@ export default function StatsPage() {
           </div>
           <span className="font-black text-base tracking-tighter">GrindSync</span>
         </div>
-        <nav className="flex-1 space-y-1">
-          {[
-            { icon: IconLayoutDashboard, label: "Dashboard", href: "/home" },
-            { icon: IconTrophy,          label: "Challenges", href: "/challenges" },
-            { icon: IconMessageCircle,   label: "Chat",       href: "/chat" },
-            { icon: IconUsers,           label: "Discover",   href: "/users" },
-            { icon: IconChartBar,        label: "Stats",      href: "/stats", active: true },
-            { icon: IconSettings,        label: "Settings",   href: "#" },
-          ].map(({ icon: Icon, label, href, active }) => (
+        <nav className="flex-1 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map(({ icon: Icon, label, href }) => (
             <Link key={label} href={href}>
               <div className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group",
-                active ? "bg-primary text-white shadow-md shadow-primary/30"
+                pathname === href ? "bg-primary text-white shadow-md shadow-primary/30"
                        : "text-[#6b7a99] hover:text-[#e4e1e9] hover:bg-white/[0.05]"
               )}>
                 <Icon size={18} className="flex-shrink-0" />
@@ -460,6 +493,89 @@ export default function StatsPage() {
             )}
           </div>
 
+          {/* ── Weak Topic Analysis ────────────────────── */}
+          <div className="bg-[#1b1b20] rounded-2xl p-4 sm:p-5 space-y-4">
+            <SectionHead
+              title="Weak Topic Analysis"
+              sub={topicAnalysis && topicAnalysis.totalVerifiedProblems > 0
+                ? `${topicAnalysis.totalVerifiedProblems} verified DSA problems analysed`
+                : "Based on your verified DSA problems"}
+            />
+
+            {!topicAnalysis || topicAnalysis.totalVerifiedProblems === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
+                <IconBrain size={32} className="text-[#6b7a99] opacity-40" />
+                <p className="text-xs text-[#6b7a99] max-w-sm leading-relaxed">
+                  Verify DSA daily problems on GrindSync and your topic strengths will be analysed here automatically.
+                  You can also mark topics you feel weak in below.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Auto focus areas */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#6b7a99] mr-1">Focus areas:</span>
+                  {topicAnalysis.focusAreas.length === 0 ? (
+                    <span className="text-[11px] text-[#6b7a99]">No data yet</span>
+                  ) : (
+                    topicAnalysis.focusAreas.map((t) => (
+                      <span key={t} className="text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full px-2.5 py-1">
+                        {t}
+                      </span>
+                    ))
+                  )}
+                  {topicAnalysis.untouchedTopics > 0 && (
+                    <span className="text-[10px] font-bold text-[#6b7a99]">
+                      · {topicAnalysis.untouchedTopics} topics untouched
+                    </span>
+                  )}
+                </div>
+
+                {/* Solve counts per topic */}
+                <div className="space-y-2">
+                  {topicAnalysis.breakdown
+                    .filter((b) => b.solved > 0)
+                    .sort((a, b) => b.solved - a.solved)
+                    .map(({ topic, solved }) => {
+                      const max = topicAnalysis.breakdown.reduce((m, b) => Math.max(m, b.solved), 1);
+                      const pct = Math.round((solved / max) * 100);
+                      return (
+                        <div key={topic} className="flex items-center gap-3">
+                          <span className="text-[11px] font-bold text-[#e4e1e9] w-36 sm:w-44 truncate flex-shrink-0">{topic}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${Math.max(6, pct)}%`, background: "linear-gradient(90deg,#2547f4,#8c25f4)" }} />
+                          </div>
+                          <span className="text-[11px] font-black text-[#6b7a99] tabular-nums w-6 text-right">{solved}</span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </>
+            )}
+
+            {/* Manual weak-topic marking */}
+            <div className="pt-2 border-t border-white/[0.06]">
+              <div className="flex items-center gap-2 mb-2 mt-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#6b7a99]">My weak topics</p>
+                {savingWeak && <IconLoader2 size={12} className="animate-spin text-[#6b7a99]" />}
+              </div>
+              <p className="text-[10px] text-[#6b7a99] mb-2.5">Tap topics you want to grind harder on — saved instantly.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(topicAnalysis?.breakdown ?? []).map(({ topic }) => {
+                  const selected = weakTopics.includes(topic);
+                  return (
+                    <button key={topic} onClick={() => toggleWeakTopic(topic)}
+                      className={cn("text-[10px] font-bold rounded-full px-2.5 py-1 border transition-colors",
+                        selected ? "text-red-400 bg-red-500/10 border-red-500/30" : "text-[#6b7a99] border-white/[0.08] hover:border-primary/30 hover:text-[#e4e1e9]")}>
+                      {topic}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           {/* ── CodeTime Deep Work ─────────────────────── */}
           <div className="bg-[#1b1b20] rounded-2xl p-4 sm:p-5">
             <SectionHead title="Time Tracking" sub="Powered by CodeTime" />
@@ -503,7 +619,7 @@ export default function StatsPage() {
       <nav className="mobile-bottom-nav lg:hidden safe-pb">
         <div className="flex items-center justify-around px-2 pt-2 pb-1">
           {MOBILE_NAV.map(({ icon: Icon, label, href }) => {
-            const isActive = href === "/stats";
+            const isActive = pathname === href;
             return (
               <Link key={label} href={href} className="no-min-size">
                 <div className={cn("flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all",

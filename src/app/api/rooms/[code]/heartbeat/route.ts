@@ -24,10 +24,8 @@ export async function POST(
 
     const res = await db.collection("study_rooms").updateOne(
       { code, "participants.userId": uid },
-      {
-        $set: { "participants.$[p].lastActiveAt": new Date() },
-        arrayFilters: [{ "p.userId": uid }],
-      }
+      { $set: { "participants.$[p].lastActiveAt": new Date() } },
+      { arrayFilters: [{ "p.userId": uid }] }
     );
 
     return NextResponse.json({ ok: true, inRoom: res.matchedCount > 0 });

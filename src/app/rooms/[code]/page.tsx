@@ -5,11 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import {
   IconArrowLeft, IconUsers, IconHandStop, IconDoorExit, IconPower,
   IconCrown, IconCopy, IconLoader2, IconVideo, IconFlame,
+  IconMicrophone, IconMicrophoneOff, IconVideoOff, IconScreenShare, IconPhoneOff,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/social-grind/AppShell";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+
+declare global {
+  interface Window { JitsiMeetExternalAPI?: any }
+}
 
 interface Participant {
   userId: string;
@@ -36,6 +41,24 @@ interface RoomDetail {
 // meet.jit.si is the free public Jitsi server — swap for JaaS or a self-hosted
 // instance later by changing only this constant.
 const JITSI_BASE = "https://meet.jit.si";
+
+// Loads the Jitsi external API script once so we can drive the call
+// (mic/camera/screen-share/hangup) from our own Discord-style controls.
+let jitsiScriptPromise: Promise<void> | null = null;
+function loadJitsiScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.reject(new Error("no window"));
+  if (window.JitsiMeetExternalAPI) return Promise.resolve();
+  if (jitsiScriptPromise) return jitsiScriptPromise;
+  jitsiScriptPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = `${JITSI_BASE}/external_api.js`;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load Jitsi API"));
+    document.body.appendChild(s);
+  });
+  return jitsiScriptPromise;
+}
 
 export default function RoomPage() {
   const { data: session } = useSession();
@@ -119,6 +142,65 @@ export default function RoomPage() {
     };
   }, [code]);
 
+  /* ── Jitsi call (external API) + Discord-style controls ── */
+  const videoRef = useRef<HTMLDivElement>(null);
+  const jitsiRef = useRef<any>(null);
+  const [callReady, setCallReady] = useState(false);
+  const [callFailed, setCallFailed] = useState(false);
+  const [micOn, setMicOn] = useState(true);
+  const [camOn, setCamOn] = useState(true);
+  const [sharing, setSharing] = useState(false);
+  const [handRaised, setHandRaised] = useState(false);
+
+  useEffect(() => {
+    if (!session?.user?.id || !code) return;
+    let disposed = false;
+    let api: any = null;
+
+    loadJitsiScript()
+      .then(() => {
+        if (disposed || !window.JitsiMeetExternalAPI || !videoRef.current) return;
+        api = new window.JitsiMeetExternalAPI("meet.jit.si", {
+          roomName: `GrindSync-${code}`,
+          parentNode: videoRef.current,
+          width: "100%",
+          height: "100%",
+          userInfo: { displayName: session.user?.name || "Grinder" },
+          configOverwrite: {
+            // Hide Jitsi's own toolbar — our control bar replaces it.
+            toolbarButtons: [],
+            disableDeepLinking: true,
+            prejoinConfig: { enabled: false },
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+          },
+          interfaceConfigOverwrite: {
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            SHOW_BRAND_WATERMARK: false,
+            SHOW_POWERED_BY: false,
+            SUPPORT_URL: "",
+          },
+        });
+        jitsiRef.current = api;
+        api.addListener("videoConferenceJoined", () => setCallReady(true));
+        api.addListener("audioMutedStatusChanged", (e: { muted: boolean }) => setMicOn(!e.muted));
+        api.addListener("videoMutedStatusChanged", (e: { muted: boolean }) => setCamOn(!e.muted));
+        api.addListener("screenSharingStatusChanged", (e: { on: boolean }) => setSharing(!!e.on));
+      })
+      .catch(() => setCallFailed(true));
+
+    return () => {
+      disposed = true;
+      try { api?.dispose?.(); } catch { /* already gone */ }
+      jitsiRef.current = null;
+    };
+  }, [session?.user?.id, code]);
+
+  const jitsiCommand = (cmd: string) => {
+    try { jitsiRef.current?.executeCommand?.(cmd); } catch { /* not ready */ }
+  };
+
   /* ── actions ───────────────────────────────────── */
   const toggleHelp = async () => {
     setHelpLoading(true);
@@ -140,6 +222,7 @@ export default function RoomPage() {
 
   const leaveRoom = async () => {
     setLeaving(true);
+    jitsiCommand("hangup");
     try { await fetch(`/api/rooms/${code}/leave`, { method: "POST" }); } catch { /* ignore */ }
     router.push("/rooms");
   };
@@ -183,8 +266,6 @@ export default function RoomPage() {
       </AppShell>
     );
   }
-
-  const jitsiUrl = `${JITSI_BASE}/GrindSync-${code}#config.prejoinPageEnabled=false&config.startWithVideoMuted=false`;
 
   return (
     <AppShell title={room ? room.name : "Study Room"}>
@@ -236,12 +317,68 @@ export default function RoomPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-[#1b1b20] rounded-2xl p-2 sm:p-3">
-                <iframe
-                  src={jitsiUrl}
-                  allow="camera; microphone; fullscreen; display-capture; autoplay"
-                  className="w-full h-[55vh] min-h-[340px] rounded-xl border-0 bg-black"
-                  title={`Video call for ${room.name}`}
-                />
+                <div className="relative w-full h-[55vh] min-h-[340px] rounded-xl overflow-hidden bg-black">
+                  {/* Jitsi mounts its call UI here (toolbar hidden) */}
+                  <div ref={videoRef} className="absolute inset-0 [&_iframe]:border-0" />
+                  {callFailed && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-6">
+                      <IconVideo size={24} className="text-[#6b7a99] opacity-50" />
+                      <p className="text-xs text-[#6b7a99] max-w-xs">
+                        Couldn&apos;t load the video call. Check your connection and reload the page.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Discord-style call controls */}
+                  {callReady && !callFailed && (
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 sm:gap-2 rounded-2xl border border-white/10 bg-[#1e1f22]/95 backdrop-blur px-2.5 py-2 shadow-2xl shadow-black/50">
+                      <div className="hidden sm:flex items-center gap-2 pr-2 mr-0.5 border-r border-white/10">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#b5bac1]">Voice connected</span>
+                      </div>
+                      <button
+                        onClick={() => jitsiCommand("toggleAudio")}
+                        title={micOn ? "Mute mic" : "Unmute mic"}
+                        className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors",
+                          micOn ? "text-[#e4e1e9] hover:bg-white/10" : "bg-[#f23f43] text-white hover:bg-[#f23f43]/80")}
+                      >
+                        {micOn ? <IconMicrophone size={19} /> : <IconMicrophoneOff size={19} />}
+                      </button>
+                      <button
+                        onClick={() => jitsiCommand("toggleVideo")}
+                        title={camOn ? "Turn camera off" : "Turn camera on"}
+                        className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors",
+                          camOn ? "text-[#e4e1e9] hover:bg-white/10" : "bg-[#f23f43] text-white hover:bg-[#f23f43]/80")}
+                      >
+                        {camOn ? <IconVideo size={19} /> : <IconVideoOff size={19} />}
+                      </button>
+                      <button
+                        onClick={() => jitsiCommand("toggleShareScreen")}
+                        title={sharing ? "Stop sharing" : "Share your screen"}
+                        className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors",
+                          sharing ? "bg-primary text-white" : "text-[#e4e1e9] hover:bg-white/10")}
+                      >
+                        <IconScreenShare size={19} />
+                      </button>
+                      <button
+                        onClick={() => { setHandRaised(!handRaised); jitsiCommand("toggleRaiseHand"); }}
+                        title={handRaised ? "Lower hand" : "Raise hand"}
+                        className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-colors",
+                          handRaised ? "bg-amber-500 text-white" : "text-[#e4e1e9] hover:bg-white/10")}
+                      >
+                        <IconHandStop size={19} />
+                      </button>
+                      <button
+                        onClick={leaveRoom}
+                        disabled={leaving}
+                        title="Leave the call"
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center bg-[#f23f43] text-white hover:bg-[#f23f43]/80 transition-colors disabled:opacity-60"
+                      >
+                        <IconPhoneOff size={19} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {room.description && (
@@ -312,7 +449,7 @@ export default function RoomPage() {
               </div>
 
               <p className="text-[9px] text-[#6b7a99] leading-relaxed pt-1">
-                Video runs on Jitsi inside GrindSync. Mic & camera controls are in the player.
+                Video runs on Jitsi inside GrindSync — mic, camera, screen share and hand-raise live in the control bar under the video.
               </p>
             </div>
           </div>

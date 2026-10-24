@@ -282,6 +282,8 @@ body.modal-open {
 
 @theme inline {
   --font-sans: var(--font-space-grotesk), var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono), monospace;
+  --font-hand: var(--font-caveat), cursive;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);

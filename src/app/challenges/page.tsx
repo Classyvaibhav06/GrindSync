@@ -1,4 +1,6 @@
 "use client";
+// Editorial redesign — flat surfaces, hairline borders, Geist Mono metadata,
+// understated weights, colour reserved for status. Logic identical to before.
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   IconTrophy,
@@ -6,26 +8,21 @@ import {
   IconPlayerStop,
   IconCheck,
   IconFlame,
-  IconStar,
-  IconCrown,
   IconBolt,
   IconClock,
   IconCode,
-  IconMedal,
   IconArrowLeft,
   IconRefresh,
   IconExternalLink,
   IconShieldCheck,
-  IconBrandLeetcode,
   IconLoader2,
   IconAlertCircle,
   IconBrandGithub,
   IconGitCommit,
+  IconDiamond,
+  IconCrown,
 } from "@tabler/icons-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -65,17 +62,75 @@ interface LeaderboardUser {
   completedChallenges: number;
 }
 
-const DIFFICULTY_CONFIG = {
-  Easy: { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", label: "Easy" },
-  Medium: { color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/20", label: "Medium" },
-  Hard: { color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", label: "Hard" },
-  Elite: { color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20", label: "Elite" },
+// Editorial monochrome: difficulty is mono text, not a coloured pill.
+const DIFFICULTY_TEXT: Record<string, string> = {
+  Easy: "text-emerald-400",
+  Medium: "text-amber-400",
+  Hard: "text-orange-400",
+  Elite: "text-violet-400",
+};
+
+const DSA_DIFFICULTY_TEXT: Record<string, string> = {
+  Easy: "text-emerald-400",
+  Medium: "text-amber-400",
+  Hard: "text-red-400",
+};
+
+// Static challenge icons come from the API as emoji — map to clean glyphs here.
+const CHALLENGE_ICONS: Record<string, React.ComponentType<{ size?: number | string; className?: string }>> = {
+  "code-30": IconBolt,
+  "code-60": IconFlame,
+  "code-120": IconDiamond,
+  "code-180": IconCrown,
 };
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/* ── Shared editorial bits ───────────────────────────── */
+function SectionLabel({ index, title }: { index: string; title: string }) {
+  return (
+    <div className="flex items-baseline gap-3">
+      <span className="font-mono text-[10px] tracking-[0.2em] text-[#6b7a99]">{index}</span>
+      <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-[#e4e1e9]">
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function QuietButton({
+  children,
+  onClick,
+  disabled,
+  className,
+  title,
+}: {
+  children: React.ReactNode;
+  onClick?: (e: React.MouseEvent) => void;
+  disabled?: boolean;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-white/[0.12]",
+        "text-sm font-medium text-[#e4e1e9] transition-colors",
+        "hover:border-white/25 hover:bg-white/[0.04]",
+        "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-white/[0.12] disabled:hover:bg-transparent",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 function CircularTimer({
@@ -95,58 +150,51 @@ function CircularTimer({
   return (
     <div className="relative flex items-center justify-center">
       <svg width="220" height="220" className="-rotate-90">
-        {/* Background track */}
         <circle
           cx="110"
           cy="110"
           r={radius}
           fill="none"
-          stroke="oklch(0.2 0 0)"
-          strokeWidth="12"
+          stroke="rgba(255,255,255,0.07)"
+          strokeWidth="2"
         />
-        {/* Progress ring */}
+        {/* Dashed tick ring for the editorial feel */}
+        <circle
+          cx="110"
+          cy="110"
+          r={radius - 10}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth="1"
+          strokeDasharray="2 6"
+        />
         <circle
           cx="110"
           cy="110"
           r={radius}
           fill="none"
-          stroke="url(#timerGradient)"
-          strokeWidth="12"
-          strokeLinecap="round"
+          stroke={isRunning ? "#10b981" : "rgba(255,255,255,0.35)"}
+          strokeWidth="2"
+          strokeLinecap="butt"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          style={{ transition: "stroke-dashoffset 1s linear" }}
+          style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
         />
-        <defs>
-          <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#2547f4" />
-            <stop offset="100%" stopColor="#8c25f4" />
-          </linearGradient>
-        </defs>
       </svg>
-      <div className="absolute flex flex-col items-center gap-1">
-        <span className="text-4xl font-black tracking-tighter text-foreground">
+      <div className="absolute flex flex-col items-center gap-1.5">
+        <span className="font-mono text-5xl tabular-nums text-[#e4e1e9] leading-none">
           {formatTime(elapsed)}
         </span>
-        <span className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-          {isRunning ? "CODING..." : "PAUSED"}
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#6b7a99]">
+          {isRunning ? "· recording ·" : "paused"}
         </span>
-        <span className="text-[10px] text-muted-foreground font-medium">
-          of {formatTime(total)}
+        <span className="font-mono text-[10px] text-[#6b7a99]/60 tabular-nums">
+          / {formatTime(total)}
         </span>
       </div>
-      {isRunning && (
-        <div className="absolute inset-0 rounded-full animate-ping opacity-10 bg-primary" />
-      )}
     </div>
   );
 }
-
-const DSA_DIFFICULTY_COLOR = {
-  Easy: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
-  Medium: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
-  Hard: "text-red-400 bg-red-500/10 border-red-500/30",
-};
 
 export default function ChallengesPage() {
   const { data: session, status } = useSession();
@@ -166,7 +214,7 @@ export default function ChallengesPage() {
   const [dsaVerifying, setDsaVerifying] = useState(false);
   const [dsaEarned, setDsaEarned] = useState(0);
   const [hasLcUsername, setHasLcUsername] = useState(true); // optimistic
-  
+
   // CodeTime state
   const [wtStats, setWtStats] = useState({ totalSeconds: 0, error: null as string | null, loading: true, hasKey: true });
   const [wtVerifying, setWtVerifying] = useState<string | null>(null);
@@ -257,7 +305,7 @@ export default function ChallengesPage() {
           totalPoints: data.totalPoints,
           completedCount: prev.completedCount + 1,
         }));
-        toast.success(`🎉 +${data.pointsEarned} points! LeetCode solve verified!`);
+        toast.success(`+${data.pointsEarned} points — solution verified`);
         fetchAllData(); // refresh leaderboard
       } else if (data.error === "NO_USERNAME") {
         setHasLcUsername(false);
@@ -277,8 +325,6 @@ export default function ChallengesPage() {
     }
   };
 
-  // fetchWakatime and fetchGithub removed — data comes from /api/challenges/all
-
   const claimGithubCommit = async () => {
     setGhClaiming(true);
     try {
@@ -288,7 +334,7 @@ export default function ChallengesPage() {
         setGhStatus(p => ({ ...p, alreadyClaimed: true }));
         setCompletedToday(prev => [...prev, "github-daily-commit"]);
         setUserStats(prev => ({ totalPoints: data.totalPoints, completedCount: prev.completedCount + 1 }));
-        toast.success(`🎉 +${data.pointsEarned} pts! Daily commit rewarded!`);
+        toast.success(`+${data.pointsEarned} pts — daily commit rewarded`);
         fetchAllData();
       } else if (data.alreadyDone) {
         toast.info("Already claimed today!");
@@ -317,7 +363,6 @@ export default function ChallengesPage() {
           const next = prev + 1;
           const totalSecs = activeChallenge.duration * 60;
           if (next >= totalSecs) {
-            // Challenge complete!
             clearInterval(intervalRef.current!);
             setIsRunning(false);
             handleChallengeComplete(activeChallenge.id, next);
@@ -350,7 +395,7 @@ export default function ChallengesPage() {
           totalPoints: data.totalPoints,
           completedCount: prev.completedCount + 1,
         }));
-        toast.success(`🎉 +${data.pointsEarned} points! Challenge verified!`);
+        toast.success(`+${data.pointsEarned} points — challenge verified`);
         fetchAllData();
       } else if (data.alreadyDone) {
         toast.error("You already completed this challenge today!");
@@ -396,98 +441,80 @@ export default function ChallengesPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0e0e13] flex items-center justify-center">
+        <div className="font-mono text-xs uppercase tracking-[0.25em] text-[#6b7a99] animate-pulse">
+          loading…
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[#0e0e13] text-[#e4e1e9]">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/60 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-20">
+      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0e0e13]/90 backdrop-blur">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 h-16">
           <div className="flex items-center gap-4">
-            <Link href="/home">
-              <Button variant="ghost" size="icon" className="rounded-2xl">
-                <IconArrowLeft className="w-5 h-5" />
-              </Button>
+            <Link href="/home" className="text-[#6b7a99] hover:text-[#e4e1e9] transition-colors">
+              <IconArrowLeft size={18} />
             </Link>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight">Challenges</h1>
-              <p className="text-xs text-muted-foreground font-medium">
-                Code, grind, earn points
-              </p>
+            <div className="flex items-center gap-2.5">
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#6b7a99]">
+                grindsync /
+              </span>
+              <h1 className="text-lg font-medium tracking-tight">Challenges</h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-2xl px-4 py-2">
-              <IconStar className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              <span className="font-black text-sm text-foreground">
-                {userStats.totalPoints.toLocaleString()} pts
-              </span>
+          <div className="flex items-center gap-6 font-mono text-xs tabular-nums">
+            <div className="hidden sm:flex items-baseline gap-2">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-[#6b7a99]">pts</span>
+              <span className="text-[#e4e1e9] font-medium">{userStats.totalPoints.toLocaleString()}</span>
             </div>
-            <div className="hidden sm:flex items-center gap-2 bg-secondary/50 border border-border rounded-2xl px-4 py-2">
-              <IconMedal className="w-4 h-4 text-primary" />
-              <span className="font-bold text-sm text-muted-foreground">
-                {userStats.completedCount} done
-              </span>
+            <div className="hidden sm:flex items-baseline gap-2">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-[#6b7a99]">done</span>
+              <span className="text-[#e4e1e9] font-medium">{userStats.completedCount}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <IconFlame size={13} className="text-orange-400" />
+              <span className="text-[#e4e1e9] font-medium">{ghStatus.streak}</span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-6xl mx-auto px-6 py-10">
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-          {/* LEFT: Challenges + Active Timer */}
-          <div className="xl:col-span-2 space-y-8">
+          {/* LEFT */}
+          <div className="xl:col-span-2 space-y-10">
             {/* Active Session */}
             {activeChallenge && (
-              <div className="relative overflow-hidden rounded-[2.5rem] border border-primary/30 bg-gradient-to-br from-primary/5 to-brand-purple/5 p-8">
-                {/* Glow bg */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
+              <div className="rounded-lg border border-white/[0.1] bg-[#1b1b20] p-8">
                 {completed ? (
                   /* Completion State */
-                  <div className="relative flex flex-col items-center gap-6 py-6">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-yellow-500/30 animate-bounce">
-                      <IconTrophy className="w-12 h-12 text-white" />
-                    </div>
-                    <div className="text-center">
-                      <h2 className="text-3xl font-black">Challenge Complete!</h2>
-                      <p className="text-muted-foreground mt-2 font-medium">
-                        You crushed{" "}
-                        <span className="text-foreground font-bold">
-                          {activeChallenge.title}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-8 py-4">
-                      <IconStar className="w-6 h-6 text-yellow-400 fill-yellow-400" />
-                      <span className="text-3xl font-black text-yellow-400">
-                        +{earnedPoints}
-                      </span>
-                      <span className="text-muted-foreground font-bold">points earned</span>
-                    </div>
-                    <Button
-                      onClick={resetTimer}
-                      className="rounded-2xl h-12 px-8 font-bold"
-                    >
-                      <IconRefresh className="w-4 h-4 mr-2" />
-                      Back to Challenges
-                    </Button>
+                  <div className="flex flex-col items-center gap-6 py-6">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-400">
+                      session complete
+                    </p>
+                    <p className="font-mono text-6xl tabular-nums text-[#e4e1e9]">
+                      +{earnedPoints}
+                    </p>
+                    <p className="text-sm text-[#6b7a99] text-center max-w-xs">
+                      {activeChallenge.title} verified and logged to your record.
+                    </p>
+                    <QuietButton onClick={resetTimer}>
+                      <IconRefresh size={14} /> Back to challenges
+                    </QuietButton>
                   </div>
                 ) : (
                   /* Timer State */
-                  <div className="relative flex flex-col items-center gap-6">
+                  <div className="flex flex-col items-center gap-6">
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl">{activeChallenge.icon}</span>
-                      <div>
-                        <h2 className="text-xl font-black">{activeChallenge.title}</h2>
-                        <p className="text-sm text-muted-foreground font-medium">
-                          {activeChallenge.points} pts on completion
-                        </p>
-                      </div>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#6b7a99]">
+                        now tracking
+                      </p>
+                      <span className="w-1 h-1 rounded-full bg-[#6b7a99]/50" />
+                      <p className="text-sm font-medium">{activeChallenge.title}</p>
+                      <span className="font-mono text-[10px] text-emerald-400">+{activeChallenge.points} pts</span>
                     </div>
 
                     <CircularTimer
@@ -496,614 +523,408 @@ export default function ChallengesPage() {
                       isRunning={isRunning}
                     />
 
-                    {/* Progress bar */}
+                    {/* Flat progress rule */}
                     <div className="w-full max-w-sm">
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-px bg-white/[0.08] relative overflow-visible">
                         <div
-                          className="h-full bg-gradient-to-r from-primary to-brand-purple rounded-full transition-all duration-1000"
+                          className="absolute left-0 top-0 h-px bg-emerald-400 transition-all duration-1000"
                           style={{
-                            width: `${Math.min(
-                              (elapsed / (activeChallenge.duration * 60)) * 100,
-                              100
-                            )}%`,
+                            width: `${Math.min((elapsed / (activeChallenge.duration * 60)) * 100, 100)}%`,
                           }}
                         />
                       </div>
-                      <div className="flex justify-between mt-2">
-                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                          Progress
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-bold">
-                          {Math.round(
-                            (elapsed / (activeChallenge.duration * 60)) * 100
-                          )}
-                          %
+                      <div className="flex justify-between mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#6b7a99]">
+                        <span>progress</span>
+                        <span className="tabular-nums">
+                          {Math.round((elapsed / (activeChallenge.duration * 60)) * 100)}%
                         </span>
                       </div>
                     </div>
 
                     <div className="flex gap-3">
-                      <Button
-                        onClick={togglePause}
-                        variant="outline"
-                        className="rounded-2xl h-12 px-6 font-bold border-border hover:bg-secondary"
-                      >
+                      <QuietButton onClick={togglePause}>
                         {isRunning ? (
-                          <>
-                            <IconPlayerStop className="w-4 h-4 mr-2" /> Pause
-                          </>
+                          <><IconPlayerStop size={14} /> Pause</>
                         ) : (
-                          <>
-                            <IconPlayerPlay className="w-4 h-4 mr-2 fill-current" />{" "}
-                            Resume
-                          </>
+                          <><IconPlayerPlay size={14} /> Resume</>
                         )}
-                      </Button>
-                      <Button
+                      </QuietButton>
+                      <button
                         onClick={resetTimer}
-                        variant="ghost"
-                        className="rounded-2xl h-12 px-6 font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-medium text-[#6b7a99] hover:text-red-400 transition-colors"
                       >
-                        Give Up
-                      </Button>
+                        Give up
+                      </button>
                     </div>
 
-                    <p className="text-xs text-muted-foreground text-center font-medium max-w-xs">
-                      💡 Keep this tab open while coding. The timer tracks your
-                      session time.
+                    <p className="font-mono text-[10px] text-[#6b7a99]/70 text-center max-w-xs leading-relaxed">
+                      keep this tab open — the timer tracks your session while you code
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Challenge Cards Grid */}
+            {/* Challenge sections */}
             {!activeChallenge && (
               <>
-                {/* ── Daily DSA Problem Card ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-black tracking-tight mb-0.5">Daily DSA Problem</h2>
-                      <p className="text-sm text-muted-foreground font-medium">
-                        Solve today&apos;s LeetCode problem and earn <span className="text-yellow-400 font-bold">+200 pts</span>
-                      </p>
-                    </div>
+                {/* ── 01 · Daily DSA ── */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <SectionLabel index="01" title="Daily problem" />
                     {!hasLcUsername && (
                       <Link href={`/profile/${session?.user?.id}`}>
-                        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl px-3 py-2 cursor-pointer hover:bg-yellow-500/20 transition-colors">
-                          <IconAlertCircle className="w-4 h-4 text-yellow-400" />
-                          <span className="text-xs font-bold text-yellow-400">Set LeetCode username</span>
-                        </div>
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-amber-400 border border-amber-500/30 rounded-md px-2.5 py-1.5 hover:bg-amber-500/10 transition-colors">
+                          <IconAlertCircle size={11} /> set leetcode username
+                        </span>
                       </Link>
                     )}
                   </div>
 
                   {dsaLoading && (
-                    <Card className="rounded-[2rem] border-border bg-card/30 p-8 flex items-center justify-center gap-3">
-                      <IconLoader2 className="w-5 h-5 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground font-medium">Loading today&apos;s problem...</span>
-                    </Card>
+                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-8 flex items-center justify-center gap-3">
+                      <IconLoader2 size={16} className="animate-spin text-[#6b7a99]" />
+                      <span className="font-mono text-xs text-[#6b7a99]">fetching today&apos;s problem…</span>
+                    </div>
                   )}
 
                   {dsaError && (
-                    <Card className="rounded-[2rem] border-red-500/20 bg-red-500/5 p-6">
-                      <p className="text-sm text-red-400 font-medium">{dsaError}</p>
-                      <Button onClick={fetchDsaData} variant="ghost" className="mt-3 rounded-2xl text-xs font-bold">
-                        <IconRefresh className="w-3.5 h-3.5 mr-1.5" /> Retry
-                      </Button>
-                    </Card>
+                    <div className="rounded-lg border border-red-500/25 bg-red-500/[0.04] p-5 flex items-center justify-between gap-4">
+                      <p className="text-sm text-red-400">{dsaError}</p>
+                      <QuietButton onClick={fetchDsaData} className="shrink-0">
+                        <IconRefresh size={13} /> Retry
+                      </QuietButton>
+                    </div>
                   )}
 
                   {!dsaLoading && !dsaError && dsaProblem && (
-                    <Card className={cn(
-                      "relative overflow-hidden rounded-[2rem] border p-6 transition-all",
-                      dsaSolvedToday
-                        ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
-                        : "border-yellow-500/20 bg-gradient-to-br from-yellow-500/5 to-orange-500/5"
-                    )}>
-                      {/* Glow */}
-                      <div className="absolute top-0 right-0 w-48 h-48 bg-yellow-500/5 rounded-full blur-3xl pointer-events-none" />
-
+                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 transition-colors hover:border-white/[0.14]">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                        <div className="flex items-start gap-4 flex-1">
-                          {/* Icon */}
-                          <div className={cn(
-                            "w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 border",
-                            dsaSolvedToday
-                              ? "bg-emerald-500/10 border-emerald-500/30"
-                              : "bg-yellow-500/10 border-yellow-500/20"
-                          )}>
-                            {dsaSolvedToday
-                              ? <IconCheck className="w-7 h-7 text-emerald-400" />
-                              : <span className="text-2xl">🧩</span>}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                              <Badge className={cn(
-                                "text-[10px] font-black uppercase tracking-wider border px-2 py-0.5",
-                                DSA_DIFFICULTY_COLOR[dsaProblem.difficulty]
-                              )}>
-                                {dsaProblem.difficulty}
-                              </Badge>
-                              <span className="text-[10px] text-muted-foreground font-medium">
-                                #{dsaProblem.questionId} · {dsaProblem.acRate}% acceptance
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] mb-2">
+                            <span className={cn("uppercase tracking-wider", DSA_DIFFICULTY_TEXT[dsaProblem.difficulty])}>
+                              {dsaProblem.difficulty}
+                            </span>
+                            <span className="text-[#6b7a99]">#{dsaProblem.questionId}</span>
+                            <span className="text-[#6b7a99] tabular-nums">{dsaProblem.acRate}% accept</span>
+                            {dsaSolvedToday && (
+                              <span className="inline-flex items-center gap-1 text-emerald-400">
+                                <IconCheck size={11} /> solved
                               </span>
-                              {dsaSolvedToday && (
-                                <Badge className="text-[10px] font-black uppercase tracking-wider border px-2 py-0.5 text-emerald-400 bg-emerald-500/10 border-emerald-500/30">
-                                  ✓ Solved Today
-                                </Badge>
-                              )}
-                            </div>
-                            <h3 className="font-black text-lg tracking-tight leading-tight mb-2">
-                              {dsaProblem.title}
-                            </h3>
-                            <div className="flex flex-wrap gap-1.5">
-                              {dsaProblem.tags.slice(0, 4).map((tag) => (
-                                <span key={tag} className="text-[10px] font-bold text-muted-foreground bg-secondary/50 border border-border rounded-full px-2.5 py-0.5">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
+                            )}
+                          </div>
+                          <h3 className="text-lg font-medium tracking-tight leading-snug mb-3">
+                            {dsaProblem.title}
+                          </h3>
+                          <div className="flex flex-wrap gap-1.5">
+                            {dsaProblem.tags.slice(0, 4).map((tag) => (
+                              <span key={tag} className="font-mono text-[10px] text-[#6b7a99] border border-white/[0.08] rounded px-2 py-0.5">
+                                {tag}
+                              </span>
+                            ))}
                           </div>
                         </div>
-
-                        {/* Points badge */}
-                        <div className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl px-4 py-2 self-start flex-shrink-0">
-                          <IconStar className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                          <span className="text-sm font-black text-yellow-400">+200 pts</span>
-                        </div>
+                        <span className="font-mono text-xs text-[#6b7a99] whitespace-nowrap self-start sm:pt-0.5">
+                          +200 pts
+                        </span>
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="flex flex-wrap gap-3 mt-5">
-                        <a
-                          href={dsaProblem.leetcodeUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1"
-                        >
-                          <Button
-                            variant="outline"
-                            className="w-full rounded-2xl h-11 font-bold border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500/50 gap-2"
-                          >
-                            <IconExternalLink className="w-4 h-4" />
-                            Open on LeetCode
-                          </Button>
-                        </a>
+                      <div className="border-t border-dashed border-white/[0.08] my-5" />
 
+                      <div className="flex flex-col sm:flex-row gap-2.5">
+                        <a href={dsaProblem.leetcodeUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
+                          <QuietButton className="w-full">
+                            <IconExternalLink size={14} /> Open on LeetCode
+                          </QuietButton>
+                        </a>
                         {!dsaSolvedToday ? (
-                          <Button
+                          <button
                             onClick={verifyDsaSolution}
                             disabled={dsaVerifying}
-                            className="flex-1 rounded-2xl h-11 font-bold shadow-lg shadow-emerald-500/10 gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50 hover:text-emerald-300"
-                            variant="outline"
+                            className="flex-1 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-emerald-500/30 text-sm font-medium text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-colors disabled:opacity-50"
                           >
                             {dsaVerifying ? (
-                              <><IconLoader2 className="w-4 h-4 animate-spin" /> Verifying on LeetCode...</>
+                              <><IconLoader2 size={14} className="animate-spin" /> verifying…</>
                             ) : (
-                              <><IconShieldCheck className="w-4 h-4" /> Verify My Solution</>  
+                              <><IconShieldCheck size={14} /> Verify solution</>
                             )}
-                          </Button>
+                          </button>
                         ) : (
-                          <div className="flex-1 flex items-center justify-center gap-2 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                            <IconCheck className="w-4 h-4 text-emerald-400" />
-                            <span className="text-sm font-black text-emerald-400">
-                              +{dsaEarned || 200} pts awarded!
-                            </span>
+                          <div className="flex-1 inline-flex items-center justify-center gap-2 h-10 rounded-md border border-emerald-500/20 bg-emerald-500/[0.06]">
+                            <IconCheck size={14} className="text-emerald-400" />
+                            <span className="font-mono text-xs text-emerald-400">+{dsaEarned || 200} pts awarded</span>
                           </div>
                         )}
                       </div>
 
                       {!hasLcUsername && (
-                        <p className="mt-3 text-xs text-yellow-400/70 font-medium">
-                          ⚠️ Set your LeetCode username in{" "}
-                          <Link href={`/profile/${session?.user?.id}`} className="underline hover:text-yellow-400 transition-colors">
+                        <p className="mt-3 font-mono text-[10px] text-[#6b7a99]">
+                          ⚠ set your leetcode username in{" "}
+                          <Link href={`/profile/${session?.user?.id}`} className="underline hover:text-[#e4e1e9] transition-colors">
                             your profile
                           </Link>{" "}
-                          to enable auto-verification.
+                          to enable auto-verification
                         </p>
                       )}
-                    </Card>
-                  )}
-                </div>
-
-                <div className="border-t border-border/50" />
-
-                {/* ── GitHub Daily Commit Card ── */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-xl font-black tracking-tight mb-0.5">Daily GitHub Commit</h2>
-                      <p className="text-sm text-muted-foreground font-medium">
-                        Push code to GitHub today and earn <span className="text-green-400 font-bold">+100 pts</span>
-                      </p>
                     </div>
+                  )}
+                </section>
+
+                <div className="border-t border-dashed border-white/[0.08]" />
+
+                {/* ── 02 · Daily commit ── */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <SectionLabel index="02" title="Daily commit" />
                     {ghStatus.hasUsername && ghStatus.streak > 0 && (
-                      <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 rounded-2xl px-3 py-2">
-                        <IconFlame className="w-4 h-4 text-orange-400" />
-                        <span className="text-xs font-black text-orange-400">{ghStatus.streak} day streak</span>
-                      </div>
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-orange-400">
+                        <IconFlame size={12} /> {ghStatus.streak}-day streak
+                      </span>
                     )}
                   </div>
 
                   {ghStatus.loading ? (
-                    <Card className="rounded-[2rem] border-border bg-card/30 p-8 flex items-center justify-center gap-3">
-                      <IconLoader2 className="w-5 h-5 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground font-medium">Checking GitHub activity...</span>
-                    </Card>
+                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-8 flex items-center justify-center gap-3">
+                      <IconLoader2 size={16} className="animate-spin text-[#6b7a99]" />
+                      <span className="font-mono text-xs text-[#6b7a99]">checking github activity…</span>
+                    </div>
                   ) : !ghStatus.hasUsername ? (
-                    <Card className="rounded-[2rem] border-border bg-card/30 p-6 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-secondary/60 flex items-center justify-center">
-                          <IconBrandGithub className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-bold">No GitHub linked</p>
-                          <p className="text-sm text-muted-foreground">Add your GitHub username to track daily commits.</p>
-                        </div>
+                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium">No GitHub linked</p>
+                        <p className="font-mono text-[11px] text-[#6b7a99] mt-1">add your username to track daily commits</p>
                       </div>
-                      <Link href={`/profile/${session?.user?.id}`}>
-                        <Button variant="outline" className="rounded-2xl font-bold gap-2 border-white/10 whitespace-nowrap">
-                          <IconBrandGithub className="w-4 h-4" /> Link GitHub
-                        </Button>
+                      <Link href={`/profile/${session?.user?.id}`} className="shrink-0">
+                        <QuietButton>
+                          <IconBrandGithub size={14} /> Link GitHub
+                        </QuietButton>
                       </Link>
-                    </Card>
+                    </div>
                   ) : (
-                    <Card className={cn(
-                      "relative overflow-hidden rounded-[2rem] border p-6 transition-all",
-                      ghStatus.alreadyClaimed
-                        ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
-                        : ghStatus.committedToday
-                          ? "border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5"
-                          : "border-border bg-card/30"
-                    )}>
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-green-500/5 rounded-full blur-3xl pointer-events-none" />
+                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 transition-colors hover:border-white/[0.14]">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-14 h-14 rounded-2xl flex items-center justify-center border flex-shrink-0",
-                            ghStatus.alreadyClaimed ? "bg-emerald-500/10 border-emerald-500/30" :
-                            ghStatus.committedToday ? "bg-green-500/10 border-green-500/30" :
-                            "bg-secondary/50 border-border"
-                          )}>
-                            {ghStatus.alreadyClaimed ? <IconCheck className="w-7 h-7 text-emerald-400" /> :
-                             ghStatus.committedToday ? <IconGitCommit className="w-7 h-7 text-green-400" /> :
-                             <IconBrandGithub className="w-7 h-7 text-muted-foreground" />}
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-11 h-11 rounded-md border border-white/[0.1] flex items-center justify-center flex-shrink-0 bg-white/[0.02]">
+                            {ghStatus.alreadyClaimed ? <IconCheck size={18} className="text-emerald-400" /> :
+                             ghStatus.committedToday ? <IconGitCommit size={18} className="text-emerald-400" /> :
+                             <IconBrandGithub size={18} className="text-[#6b7a99]" />}
                           </div>
-                          <div>
-                            <p className="font-black text-base">
-                              {ghStatus.alreadyClaimed ? "Commit Claimed!" :
-                               ghStatus.committedToday ? `${ghStatus.commitCount} commit${ghStatus.commitCount !== 1 ? "s" : ""} pushed today!` :
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              {ghStatus.alreadyClaimed ? "Commit claimed" :
+                               ghStatus.committedToday ? `${ghStatus.commitCount} commit${ghStatus.commitCount !== 1 ? "s" : ""} pushed today` :
                                "No commits yet today"}
                             </p>
-                            <p className="text-sm text-muted-foreground">
-                              @{ghStatus.githubUsername} · {ghStatus.committedToday ? "GitHub activity detected" : "Push some code to claim!"}
+                            <p className="font-mono text-[11px] text-[#6b7a99] mt-0.5 truncate">
+                              @{ghStatus.githubUsername} · {ghStatus.committedToday ? "activity detected" : "push some code to claim"}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <div className="flex items-center gap-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl px-4 py-2">
-                            <IconStar className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                            <span className="text-sm font-black text-yellow-400">+100 pts</span>
-                          </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-mono text-xs text-[#6b7a99]">+100 pts</span>
                           {!ghStatus.alreadyClaimed ? (
-                            <Button
+                            <button
                               onClick={claimGithubCommit}
                               disabled={!ghStatus.committedToday || ghClaiming}
                               className={cn(
-                                "rounded-2xl h-11 px-6 font-bold gap-2",
+                                "inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border text-sm font-medium transition-colors",
                                 ghStatus.committedToday
-                                  ? "bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20"
-                                  : "opacity-40 cursor-not-allowed bg-secondary text-muted-foreground border border-border"
+                                  ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                                  : "border-white/[0.08] text-[#6b7a99] opacity-40 cursor-not-allowed"
                               )}
-                              variant="outline"
                             >
-                              {ghClaiming ? <IconLoader2 className="w-4 h-4 animate-spin" /> : <IconShieldCheck className="w-4 h-4" />}
-                              {ghStatus.committedToday ? "Claim Reward" : "Not yet"}
-                            </Button>
+                              {ghClaiming ? <IconLoader2 size={14} className="animate-spin" /> : <IconShieldCheck size={14} />}
+                              {ghStatus.committedToday ? "Claim reward" : "Not yet"}
+                            </button>
                           ) : (
-                            <div className="flex items-center gap-2 h-11 px-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
-                              <IconCheck className="w-4 h-4 text-emerald-400" />
-                              <span className="text-sm font-black text-emerald-400">Claimed!</span>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-emerald-400">
+                              <IconCheck size={13} /> claimed
+                            </span>
                           )}
                         </div>
                       </div>
-                    </Card>
+                    </div>
                   )}
-                </div>
+                </section>
 
-                <div className="border-t border-border/50" />
+                <div className="border-t border-dashed border-white/[0.08]" />
 
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-1">
-                    <h2 className="text-xl font-black tracking-tight">Today&apos;s Focus Challenges</h2>
-                    
-                    {/* WakaTime Status */}
-                    <div className="flex items-center gap-2 bg-secondary/30 rounded-full px-4 py-2 border border-border">
-                      <IconCode className="w-4 h-4 text-blue-400" />
+                {/* ── 03 · Focus sessions ── */}
+                <section className="space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <SectionLabel index="03" title="Focus sessions" />
+                    <span className="font-mono text-[11px] text-[#6b7a99]">
                       {wtStats.loading ? (
-                        <span className="text-xs font-bold text-muted-foreground animate-pulse">Checking WakaTime...</span>
+                        "checking wakatime…"
                       ) : wtStats.hasKey ? (
-                        <span className="text-xs font-bold">
-                          Coded Today: <span className="text-blue-400">{(wtStats.totalSeconds / 60).toFixed(0)} mins</span>
-                        </span>
+                        <>coded <span className="text-[#e4e1e9] tabular-nums">{(wtStats.totalSeconds / 60).toFixed(0)}m</span> today</>
                       ) : (
-                        <Link href={`/profile/${session?.user?.id}`}>
-                          <span className="text-xs font-bold text-muted-foreground hover:text-blue-400 transition-colors underline decoration-dotted">Link WakaTime to auto-verify</span>
+                        <Link href={`/profile/${session?.user?.id}`} className="underline decoration-dotted hover:text-[#e4e1e9] transition-colors">
+                          link wakatime to auto-verify
                         </Link>
                       )}
-                    </div>
+                    </span>
                   </div>
-                  <p className="text-sm text-muted-foreground font-medium mb-6">
-                    Start a focus session, or link WakaTime to instantly claim rewards based on your actual coding time!
-                  </p>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {challenges.map((challenge) => {
-                    const isDone = completedToday.includes(challenge.id);
-                    const diff = DIFFICULTY_CONFIG[challenge.difficulty];
+                  <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] divide-y divide-white/[0.06] overflow-hidden">
+                    {challenges.map((challenge) => {
+                      const isDone = completedToday.includes(challenge.id);
+                      const Icon = CHALLENGE_ICONS[challenge.id] ?? IconCode;
 
-                    return (
-                      <Card
-                        key={challenge.id}
-                        className={cn(
-                          "relative overflow-hidden rounded-[2rem] border p-6 transition-all duration-300 group",
-                          isDone
-                            ? "border-emerald-500/30 bg-emerald-500/5 opacity-70"
-                            : `${challenge.borderColor} bg-gradient-to-br ${challenge.color} hover:scale-[1.02] hover:shadow-2xl cursor-pointer`
-                        )}
-                        onClick={() => !isDone && startChallenge(challenge)}
-                      >
-                        {/* Done badge overlay */}
-                        {isDone && (
-                          <div className="absolute top-4 right-4 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl px-3 py-1 flex items-center gap-1.5">
-                            <IconCheck className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">
-                              Done
+                      return (
+                        <div
+                          key={challenge.id}
+                          onClick={() => !isDone && startChallenge(challenge)}
+                          className={cn(
+                            "flex flex-col sm:flex-row sm:items-center gap-4 p-5 transition-colors",
+                            isDone ? "opacity-50" : "hover:bg-white/[0.02] cursor-pointer"
+                          )}
+                        >
+                          {/* Icon */}
+                          <div className="w-10 h-10 rounded-md border border-white/[0.1] bg-white/[0.02] flex items-center justify-center flex-shrink-0 text-[#6b7a99]">
+                            <Icon size={18} />
+                          </div>
+
+                          {/* Title + description */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5">
+                              <h3 className="text-sm font-medium truncate">{challenge.title}</h3>
+                              <span className={cn("font-mono text-[10px] uppercase tracking-wider", DIFFICULTY_TEXT[challenge.difficulty])}>
+                                {challenge.difficulty.toLowerCase()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#6b7a99] line-clamp-1 mt-0.5">{challenge.description}</p>
+                          </div>
+
+                          {/* Mono meta */}
+                          <div className="flex items-center gap-5 font-mono text-[11px] tabular-nums shrink-0">
+                            <span className="text-[#6b7a99] flex items-center gap-1.5">
+                              <IconClock size={11} /> {challenge.duration}m
                             </span>
-                          </div>
-                        )}
-
-                        <div className="space-y-4">
-                          <div className="flex items-start gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-background/30 backdrop-blur-sm flex items-center justify-center text-3xl border border-white/5 flex-shrink-0">
-                              {challenge.icon}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-black text-lg tracking-tight leading-tight">
-                                {challenge.title}
-                              </h3>
-                              <p className="text-sm text-muted-foreground font-medium mt-0.5 line-clamp-2">
-                                {challenge.description}
-                              </p>
-                            </div>
+                            <span className="text-[#e4e1e9]">+{challenge.points}</span>
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                className={cn(
-                                  "text-[10px] font-black uppercase tracking-wider border px-2 py-0.5",
-                                  diff.bg,
-                                  diff.color
-                                )}
-                              >
-                                {diff.label}
-                              </Badge>
-                              <div className="flex items-center gap-1 text-muted-foreground">
-                                <IconClock className="w-3.5 h-3.5" />
-                                <span className="text-xs font-bold">
-                                  {challenge.duration}m
-                                </span>
+                          {/* Action */}
+                          <div className="shrink-0 sm:w-40">
+                            {isDone ? (
+                              <div className="inline-flex items-center justify-center gap-1.5 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-emerald-500/20">
+                                <IconCheck size={13} className="text-emerald-400" />
+                                <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-400">done</span>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <IconStar className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                              <span className="text-sm font-black text-yellow-400">
-                                {challenge.points}
-                              </span>
-                              <span className="text-xs text-muted-foreground font-bold">
-                                pts
-                              </span>
-                            </div>
+                            ) : wtStats.hasKey && wtStats.totalSeconds >= challenge.duration * 60 ? (
+                              <button
+                                onClick={(e) => claimWithWakatime(e, challenge)}
+                                disabled={wtVerifying === challenge.id}
+                                className="inline-flex items-center justify-center gap-2 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-emerald-500/30 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                              >
+                                {wtVerifying === challenge.id ? <IconLoader2 size={13} className="animate-spin" /> : <IconShieldCheck size={13} />}
+                                trust wakatime
+                              </button>
+                            ) : (
+                              <button className="inline-flex items-center justify-center gap-2 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-white/[0.12] text-xs font-medium text-[#e4e1e9] hover:border-white/30 hover:bg-white/[0.04] transition-colors">
+                                <IconPlayerPlay size={12} /> start timer
+                              </button>
+                            )}
                           </div>
-
-                          {!isDone && (
-                            <div className="flex gap-2">
-                              {/* WakaTime Auto-Claim */}
-                              {wtStats.hasKey && wtStats.totalSeconds >= challenge.duration * 60 ? (
-                                <Button 
-                                  onClick={(e) => claimWithWakatime(e, challenge)}
-                                  disabled={wtVerifying === challenge.id}
-                                  className="flex-1 rounded-xl h-11 font-black bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-all"
-                                >
-                                  {wtVerifying === challenge.id ? <IconLoader2 className="w-4 h-4 mr-2 animate-spin" /> : <IconShieldCheck className="w-4 h-4 mr-2" />}
-                                  Trust WakaTime
-                                </Button>
-                              ) : (
-                                <Button className="flex-1 rounded-xl h-11 font-black bg-background/30 hover:bg-background/50 text-foreground border border-white/10 backdrop-blur-sm group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
-                                  <IconCode className="w-4 h-4 mr-2" />
-                                  Start Timer
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                          {isDone && (
-                            <div className="flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                              <IconCheck className="w-4 h-4 text-emerald-400" />
-                              <span className="text-sm font-black text-emerald-400">
-                                Completed Today!
-                              </span>
-                            </div>
-                          )}
                         </div>
-                      </Card>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                </section>
               </>
             )}
           </div>
 
-          {/* RIGHT: Leaderboard */}
-          <div className="space-y-6">
-            {/* User's own rank/stats card */}
-            <Card className="rounded-[2rem] border-border bg-gradient-to-br from-primary/10 to-brand-purple/10 p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <IconBolt className="w-5 h-5 text-primary" />
-                <h3 className="font-black tracking-tight">Your Stats</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-background/30 rounded-2xl p-4 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black mb-1">
-                    Total Points
-                  </p>
-                  <p className="text-2xl font-black text-primary">
-                    {userStats.totalPoints.toLocaleString()}
-                  </p>
+          {/* RIGHT */}
+          <div className="space-y-8">
+            {/* Your record */}
+            <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 space-y-5">
+              <SectionLabel index="04" title="Your record" />
+              <div className="grid grid-cols-2 gap-px bg-white/[0.06] rounded-md overflow-hidden border border-white/[0.06]">
+                <div className="bg-[#16161c] p-4">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#6b7a99] mb-2">points</p>
+                  <p className="font-mono text-2xl tabular-nums text-[#e4e1e9]">{userStats.totalPoints.toLocaleString()}</p>
                 </div>
-                <div className="bg-background/30 rounded-2xl p-4 text-center">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-black mb-1">
-                    Completed
-                  </p>
-                  <p className="text-2xl font-black text-foreground">
-                    {userStats.completedCount}
-                  </p>
+                <div className="bg-[#16161c] p-4">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#6b7a99] mb-2">completed</p>
+                  <p className="font-mono text-2xl tabular-nums text-[#e4e1e9]">{userStats.completedCount}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <IconFlame className="w-3.5 h-3.5 text-orange-400" />
-                <span className="font-medium">
-                  {completedToday.length} of {challenges.length} done today
-                </span>
-              </div>
-            </Card>
+              <p className="font-mono text-[10px] text-[#6b7a99]">
+                {completedToday.length}/{challenges.length} done today
+              </p>
+            </div>
 
             {/* Leaderboard */}
-            <Card className="rounded-[2rem] border-border bg-card/30 backdrop-blur-sm overflow-hidden">
-              <div className="p-6 pb-4 border-b border-border flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-                  <IconCrown className="w-5 h-5 text-yellow-400" />
-                </div>
-                <div>
-                  <h3 className="font-black tracking-tight">Leaderboard</h3>
-                  <p className="text-[10px] text-muted-foreground font-medium">
-                    Top grinders by points
-                  </p>
-                </div>
+            <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] overflow-hidden">
+              <div className="p-5 border-b border-white/[0.06]">
+                <SectionLabel index="05" title="Leaderboard" />
               </div>
 
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-white/[0.05]">
                 {leaderboard.length === 0 && (
                   <div className="flex flex-col items-center gap-3 py-12 px-6 text-center">
-                    <IconTrophy className="w-10 h-10 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground font-medium">
-                      No one on the leaderboard yet.
-                      <br />
-                      <span className="text-primary font-bold">
-                        Be the first to complete a challenge!
-                      </span>
+                    <IconTrophy size={28} className="text-[#6b7a99]/40" />
+                    <p className="font-mono text-[11px] text-[#6b7a99] leading-relaxed">
+                      no entries yet — be the first to log a session
                     </p>
                   </div>
                 )}
-                {leaderboard.map((user, i) => {
-                  const rankEmoji =
-                    i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-
-                  return (
-                    <div
-                      key={user._id}
-                      className={cn(
-                        "flex items-center gap-4 px-6 py-4 transition-colors",
-                        i < 3
-                          ? "bg-gradient-to-r from-yellow-500/5 to-transparent"
-                          : "hover:bg-secondary/20"
-                      )}
-                    >
-                      {/* Rank */}
-                      <div className="w-8 flex-shrink-0 flex items-center justify-center">
-                        {rankEmoji ? (
-                          <span className="text-xl">{rankEmoji}</span>
-                        ) : (
-                          <span className="text-sm font-black text-muted-foreground">
-                            #{i + 1}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Avatar */}
-                      <Avatar className="w-9 h-9 ring-2 ring-border ring-offset-1 ring-offset-background">
-                        <AvatarImage
-                          src={
-                            user.image ||
-                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`
-                          }
-                        />
-                        <AvatarFallback className="text-xs font-black">
-                          {user.name?.substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      {/* Name */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate">{user.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium truncate">
-                          @{user.username || user.name}
-                        </p>
-                      </div>
-
-                      {/* Points */}
-                      <div className="text-right flex-shrink-0">
-                        <p
-                          className={cn(
-                            "text-sm font-black",
-                            i === 0
-                              ? "text-yellow-400"
-                              : i === 1
-                              ? "text-slate-300"
-                              : i === 2
-                              ? "text-amber-600"
-                              : "text-foreground"
-                          )}
-                        >
-                          {user.totalPoints.toLocaleString()}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-medium">
-                          pts
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* Tips Card */}
-            <Card className="rounded-[2rem] border-border bg-card/30 p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <IconFlame className="w-4 h-4 text-orange-400" />
-                <h3 className="font-black text-sm tracking-tight">Grind Tips</h3>
-              </div>
-              <ul className="space-y-2">
-                {[
-                  "Keep this tab visible while coding",
-                  "Each challenge resets daily at midnight",
-                  "Higher difficulty = more points",
-                  "Top 3 leaderboard gets special badge",
-                ].map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                    <span className="text-xs text-muted-foreground font-medium">
-                      {tip}
+                {leaderboard.map((user, i) => (
+                  <div
+                    key={user._id}
+                    className="flex items-center gap-3.5 px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <span className={cn(
+                      "font-mono text-xs tabular-nums w-6 shrink-0",
+                      i === 0 ? "text-amber-400" : i < 3 ? "text-[#e4e1e9]" : "text-[#6b7a99]"
+                    )}>
+                      {String(i + 1).padStart(2, "0")}
                     </span>
+
+                    <Avatar className="w-8 h-8 border border-white/[0.1]">
+                      <AvatarImage
+                        src={user.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`}
+                      />
+                      <AvatarFallback className="bg-white/[0.05] text-[#6b7a99] font-mono text-[9px]">
+                        {user.name?.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{user.name}</p>
+                      <p className="font-mono text-[10px] text-[#6b7a99] truncate">
+                        @{user.username || user.name}
+                      </p>
+                    </div>
+
+                    <span className="font-mono text-xs tabular-nums text-[#e4e1e9] shrink-0">
+                      {user.totalPoints.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Field notes */}
+            <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 space-y-4">
+              <SectionLabel index="06" title="Field notes" />
+              <p className="font-hand text-2xl leading-snug text-[#e4e1e9]/90 -rotate-1">
+                &ldquo;show up daily — the points take care of themselves.&rdquo;
+              </p>
+              <ul className="space-y-2.5 border-t border-dashed border-white/[0.08] pt-4">
+                {[
+                  "each challenge resets daily at midnight IST",
+                  "higher difficulty pays more points",
+                  "top 3 of the leaderboard get the badge",
+                ].map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="font-mono text-[10px] text-[#6b7a99]/60 mt-0.5">0{i + 1}</span>
+                    <span className="font-mono text-[10px] text-[#6b7a99] leading-relaxed">{tip}</span>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
           </div>
         </div>
       </main>

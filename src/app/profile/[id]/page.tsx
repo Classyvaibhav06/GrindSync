@@ -25,7 +25,9 @@ import {
   IconUserPlus,
   IconUserMinus,
   IconArrowLeft,
+  IconShare2,
 } from "@tabler/icons-react";
+import { toast } from "sonner";
 import ContributionGraph from "@/components/social-grind/ContributionGraph";
 import { cn } from "@/lib/utils";
 
@@ -782,6 +784,32 @@ export default function ProfilePage() {
     }
   };
 
+  const shareProfile = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    const name = profile?.useProfile?.name || "This grinder";
+    const shareData = {
+      title: `${name} on GrindSync`,
+      text: `Check out ${name}'s grind — streaks, challenges and stats on GrindSync`,
+      url,
+    };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Profile link copied!");
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Profile link copied!");
+      } catch {
+        toast.error("Could not share profile");
+      }
+    }
+  };
+
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0e0e13]">
@@ -982,6 +1010,14 @@ export default function ProfilePage() {
                     Edit Profile
                   </button>
                 )}
+                <button
+                  onClick={shareProfile}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-black border border-white/[0.10] text-[#6b7a99] hover:text-[#e4e1e9] hover:border-primary/40 hover:bg-primary/[0.05] transition-all"
+                  title="Share this profile"
+                >
+                  <IconShare2 size={15} />
+                  Share
+                </button>
               </div>
             </div>
 

@@ -16,6 +16,11 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NAV_ITEMS, MOBILE_NAV } from "@/lib/nav";
+import { BarChart } from "@/components/charts/bar-chart";
+import { Bar } from "@/components/charts/bar";
+import { BarXAxis } from "@/components/charts/bar-x-axis";
+import { Grid } from "@/components/charts/grid";
+import { ChartTooltip } from "@/components/charts/tooltip/chart-tooltip";
 
 
 /* ── Types ──────────────────────────────────────────── */
@@ -124,7 +129,6 @@ export default function HomePage() {
 
   /* UI state */
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeBar, setActiveBar] = useState(6); // default highlight today (index 6 = Sun placeholder)
 
   /* Data state (initialize from cache if available) */
   const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(_dashboardCache?.challengeStats ?? null);
@@ -213,7 +217,6 @@ export default function HomePage() {
       console.error("Dashboard fetch error:", err);
     }
 
-    setActiveBar(6);
     setLoading(false);
   }, [session?.user?.id]);
 
@@ -393,7 +396,7 @@ export default function HomePage() {
               chipColor="green" loading={loading} />
             <KpiCard label="Screen Time"
               value={loading ? "…" : wakaOk ? fmtTime(waka!.totalSecondsToday!) : "—"}
-              chip={wakaOk ? "Today via GrindSync" : waka?.error === "NO_CODETIME_KEY" ? "Link API Key" : waka?.error || "No data"}
+              chip={wakaOk ? "Today via GrindSync" : waka?.error === "NO_CODETIME_KEY" ? "Connect VS Code" : waka?.error || "No data"}
               chipColor="purple" loading={loading && !waka} />
           </div>
 
@@ -421,84 +424,37 @@ export default function HomePage() {
                   </span>
                 </Link>
               </div>
-              {/* Bars */}
-              {(() => {
-                const BAR_MAX_H = 148; // px, matches the container height minus day labels
-                const maxCount = Math.max(...focusData.map(d => d.count), 1);
-                return loading ? (
-                  <div className="flex items-end gap-2 h-44 pb-6">
-                    {[30, 55, 40, 72, 45, 88, 60].map((pct, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 justify-end h-full">
-                        <div className="w-full rounded-t-md animate-pulse bg-white/[0.08]" style={{ height: `${pct}%` }} />
-                        <div className="w-5 h-2 rounded bg-white/[0.05] animate-pulse" />
-                      </div>
-                    ))}
-                  </div>
-                ) : focusData.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-44 gap-2 text-center">
-                    <IconBrandGithub size={28} className="text-[#6b7a99] opacity-30" />
-                    <p className="text-xs text-[#6b7a99]">Link GitHub in your profile to see commit activity here</p>
-                  </div>
-                ) : (
-                  <div className="flex items-end gap-2 pt-8 pb-0" style={{ height: "176px" }}>
-                    {focusData.map((d, i) => {
-                      const isActive = i === activeBar;
-                      const isToday = i === focusData.length - 1;
-                      // Always at least 6px for zero days, else proportional
-                      const barH = d.count === 0 ? 6 : Math.max(18, Math.round((d.count / maxCount) * BAR_MAX_H));
-                      return (
-                        <div
-                          key={d.day + i}
-                          className="flex-1 flex flex-col items-center justify-end cursor-pointer select-none group"
-                          style={{ height: `${BAR_MAX_H}px` }}
-                          onMouseEnter={() => setActiveBar(i)}
-                          onMouseLeave={() => setActiveBar(focusData.length - 1)}
-                        >
-                          {/* Tooltip */}
-                          <div className={cn(
-                            "mb-2 px-2 py-0.5 rounded-md text-[9px] font-black whitespace-nowrap transition-all duration-150 border",
-                            isActive ? "opacity-100 bg-[#111116] border-white/[0.12] text-[#e4e1e9] shadow-lg" : "opacity-0 pointer-events-none bg-transparent border-transparent text-transparent"
-                          )}>
-                            {d.count} commit{d.count !== 1 ? "s" : ""}
-                          </div>
-
-                          {/* Bar */}
-                          <div
-                            className="w-full rounded-t-md transition-all duration-200 relative overflow-hidden"
-                            style={{ height: `${barH}px` }}
-                          >
-                            {/* Background fill */}
-                            <div className="absolute inset-0 rounded-t-md" style={{
-                              background: isActive
-                                ? "linear-gradient(to top, #1d3bcc 0%, #3d5eff 100%)"
-                                : isToday
-                                  ? d.count > 0
-                                    ? "linear-gradient(to top, rgba(16,185,129,0.25) 0%, rgba(52,211,153,0.5) 100%)"
-                                    : "linear-gradient(to top, rgba(16,185,129,0.08) 0%, rgba(52,211,153,0.12) 100%)"
-                                  : d.count > 0
-                                    ? "linear-gradient(to top, rgba(37,71,244,0.25) 0%, rgba(99,120,255,0.55) 100%)"
-                                    : "rgba(255,255,255,0.04)"
-                            }} />
-                            {/* Top glow line */}
-                            {d.count > 0 && (
-                              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{
-                                background: isActive ? "#6380ff" : isToday ? "rgba(52,211,153,0.7)" : "rgba(99,120,255,0.4)",
-                                boxShadow: isActive ? "0 0 8px #3d5eff" : "none"
-                              }} />
-                            )}
-                          </div>
-
-                          {/* Day label */}
-                          <span className={cn(
-                            "text-[9px] font-black uppercase tracking-widest mt-1.5 transition-colors",
-                            isActive ? "text-primary" : isToday ? "text-emerald-400" : "text-[#6b7a99]"
-                          )}>{d.day}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+              {loading ? (
+                <div className="flex items-end gap-2 h-44 pb-6">
+                  {[30, 55, 40, 72, 45, 88, 60].map((pct, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2 justify-end h-full">
+                      <div className="w-full rounded-t-md animate-pulse bg-white/[0.08]" style={{ height: `${pct}%` }} />
+                      <div className="w-5 h-2 rounded bg-white/[0.05] animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : focusData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-44 gap-2 text-center">
+                  <IconBrandGithub size={28} className="text-[#6b7a99] opacity-30" />
+                  <p className="text-xs text-[#6b7a99]">Link GitHub in your profile to see commit activity here</p>
+                </div>
+              ) : (
+                <BarChart
+                  data={focusData.map(({ day, count }) => ({ day, commits: count }))}
+                  xDataKey="day"
+                  aspectRatio="3 / 1"
+                  margin={{ top: 12, right: 12, bottom: 32, left: 12 }}
+                  animationDuration={1100}
+                  animationEasing="cubic-bezier(0.85, 0, 0.15, 1)"
+                  barGap={0.35}
+                  className="text-[#e4e1e9]"
+                >
+                  <Grid horizontal stroke="rgba(255,255,255,0.08)" strokeDasharray="3,4" />
+                  <Bar dataKey="commits" fill="var(--chart-1)" lineCap="round" minBarHeight={4} />
+                  <BarXAxis showAllLabels />
+                  <ChartTooltip showDatePill={false} />
+                </BarChart>
+              )}
             </div>
 
             {/* Right column */}

@@ -344,7 +344,7 @@ export default function StatsPage() {
               sub={githubStatus?.committedToday ? "✅ Committed today" : "No push today"}
               icon={<IconFlame size={16} className="text-emerald-400" />} accent="green" loading={loading} />
             <StatCard label="Deep Work Today" value={loading || !wToday ? (wakaStats?.error ? "—" : "…") : fmtTime(wToday)}
-              sub={wakaStats?.error === "NO_CODETIME_KEY" ? "Link CodeTime in profile" : "Tracked via CodeTime"}
+              sub={wakaStats?.error === "NO_CODETIME_KEY" ? "Connect VS Code in Settings" : "Tracked in your editor"}
               icon={<IconClock size={16} className="text-violet-400" />} accent="purple" loading={loading && !wakaStats} />
           </div>
 
@@ -583,8 +583,8 @@ export default function StatsPage() {
               <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-violet-500/[0.06] border border-violet-500/20">
                 <IconClock size={32} className="text-violet-400 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-bold text-[#e4e1e9]">Connect CodeTime</p>
-                  <p className="text-xs text-[#6b7a99] mt-0.5">Add your CodeTime API key in Edit Profile to automatically track deep work time.</p>
+                  <p className="text-sm font-bold text-[#e4e1e9]">Connect VS Code</p>
+                  <p className="text-xs text-[#6b7a99] mt-0.5">Install the GrindSync extension and pair it from <Link href="/settings/connected-ides" className="underline hover:text-[#e4e1e9]">Connected IDEs</Link> to track deep work time automatically.</p>
                 </div>
                 <Link href={`/profile/${userId}`} className="flex-shrink-0">
                   <button className="text-[11px] font-black text-violet-400 border border-violet-500/30 bg-violet-500/10 px-4 py-2 rounded-full hover:bg-violet-500/20 transition-colors whitespace-nowrap">

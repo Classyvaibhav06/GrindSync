@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getTodayIdeSeconds, hasConnectedIde } from "@/lib/ide/server";
 
 /* ── In-memory cache ────────────────────────────────── */
 const cache = new Map<string, { data: any; ts: number }>();
@@ -187,14 +188,19 @@ export async function GET(req: NextRequest) {
         return { hasUsername: true, githubUsername, committedToday, commitCount, streak: Math.max(streak, user?.githubStats?.commitStreak||0), alreadyClaimed, loading: false };
       })() : Promise.resolve({ hasUsername: false, committedToday: false, commitCount: 0, alreadyClaimed: false, streak: 0, loading: false }),
 
-      // CodeTime
-      codetimeToken ? (async () => {
+      // Coding time: prefer the GrindSync IDE extension, fall back to CodeTime
+      (async () => {
+        const ownerId = new ObjectId(userId);
+        if (await hasConnectedIde(db, ownerId)) {
+          return { totalSeconds: await getTodayIdeSeconds(db, ownerId), error: null, loading: false, hasKey: true, source: "grindsync-ide" };
+        }
+        if (!codetimeToken) return { totalSeconds: 0, error: null, loading: false, hasKey: false };
         const res = await fetch("https://api.software.com/api/v1/sessions?summary=true", { headers: { Authorization: `Bearer ${codetimeToken}`, "Content-Type": "application/json" }, cache: "no-store", signal: AbortSignal.timeout(5000) });
         if (!res.ok) return { totalSeconds: 0, error: "CODETIME_ERROR", loading: false, hasKey: true };
         const data = await res.json();
         const mins = data.sessionSummary?.activeCodeTimeMinutes || data.sessionSummary?.minutes || 0;
         return { totalSeconds: mins*60, error: null, loading: false, hasKey: true };
-      })() : Promise.resolve({ totalSeconds: 0, error: null, loading: false, hasKey: false }),
+      })(),
 
       // DSA solved today check
       (async () => {

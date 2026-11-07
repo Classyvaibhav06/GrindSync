@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getTodayIdeSeconds, hasConnectedIde } from "@/lib/ide/server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,16 @@ export async function GET(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db();
     
+    // Prefer time tracked by the GrindSync IDE extension
+    const ownerId = new ObjectId(session.user.id);
+    if (await hasConnectedIde(db, ownerId)) {
+      return NextResponse.json({
+        success: true,
+        source: "grindsync-ide",
+        totalSecondsToday: await getTodayIdeSeconds(db, ownerId),
+      });
+    }
+
     // Fetch the user to check their CodeTime key
     const user = await db.collection("users").findOne({ _id: new ObjectId(session.user.id) });
     const codetimeToken = user?.codetimeToken;

@@ -483,6 +483,23 @@ export default function ChallengesPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-10">
+        <section className="mb-10 grid gap-6 border-b border-white/[0.08] pb-8 md:grid-cols-[1.2fr_0.8fr] md:items-end">
+          <div className="space-y-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#7e8aa3]">Daily practice / 01</p>
+            <h2 className="max-w-2xl text-4xl font-medium leading-[1.08] tracking-tight text-[#e4e1e9] sm:text-5xl">
+              Make progress,<br className="hidden sm:block" /> one challenge at a time.
+            </h2>
+          </div>
+          <div className="flex flex-col gap-4 md:items-end md:text-right">
+            <p className="max-w-sm text-sm leading-relaxed text-[#7e8aa3]">
+              Build a steady coding habit with daily problems, verified commits, and focused work sessions.
+            </p>
+            <Link href="#focus-sessions" className="group inline-flex items-center gap-2 text-sm font-medium text-[#e4e1e9] transition-colors hover:text-emerald-400">
+              Browse focus sessions <span className="transition-transform group-hover:translate-x-1" aria-hidden="true">↗</span>
+            </Link>
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
           {/* LEFT */}
           <div className="xl:col-span-2 space-y-10">
@@ -598,7 +615,7 @@ export default function ChallengesPage() {
                   )}
 
                   {!dsaLoading && !dsaError && dsaProblem && (
-                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 transition-colors hover:border-white/[0.14]">
+                    <div className="min-h-[220px] border border-white/[0.08] bg-[#1b1b20]/80 p-6 shadow-[inset_0_0_2px_2px_rgba(255,255,255,0.025),inset_0_0_0_1px_rgba(255,255,255,0.025),0_1px_2px_rgba(0,0,0,0.2)] transition-colors hover:border-white/[0.16]">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] mb-2">
@@ -701,7 +718,7 @@ export default function ChallengesPage() {
                       </Link>
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] p-6 transition-colors hover:border-white/[0.14]">
+                    <div className="min-h-[160px] border border-white/[0.08] bg-[#1b1b20]/80 p-6 shadow-[inset_0_0_2px_2px_rgba(255,255,255,0.025),inset_0_0_0_1px_rgba(255,255,255,0.025),0_1px_2px_rgba(0,0,0,0.2)] transition-colors hover:border-white/[0.16]">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-4 min-w-0">
                           <div className="w-11 h-11 rounded-md border border-white/[0.1] flex items-center justify-center flex-shrink-0 bg-white/[0.02]">
@@ -750,83 +767,96 @@ export default function ChallengesPage() {
                 <div className="border-t border-dashed border-white/[0.08]" />
 
                 {/* ── 03 · Focus sessions ── */}
-                <section className="space-y-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <SectionLabel index="03" title="Focus sessions" />
-                    <span className="font-mono text-[11px] text-[#6b7a99]">
-                      {wtStats.loading ? (
-                        "checking wakatime…"
-                      ) : wtStats.hasKey ? (
-                        <>coded <span className="text-[#e4e1e9] tabular-nums">{(wtStats.totalSeconds / 60).toFixed(0)}m</span> today</>
-                      ) : (
-                        <Link href={`/profile/${session?.user?.id}`} className="underline decoration-dotted hover:text-[#e4e1e9] transition-colors">
-                          link wakatime to auto-verify
-                        </Link>
-                      )}
-                    </span>
+                <section id="focus-sessions" className="space-y-4 scroll-mt-24">
+                  <div className="flex flex-col gap-5 border-b border-white/[0.08] pb-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="space-y-3">
+                      <SectionLabel index="03" title="Focus sessions" />
+                      <h3 className="max-w-lg text-2xl font-medium leading-tight tracking-tight text-[#e4e1e9] sm:text-3xl">
+                        Make time for the work that moves you forward.
+                      </h3>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-2 sm:items-end sm:text-right">
+                      <p className="max-w-xs text-xs leading-relaxed text-[#6b7a99]">
+                        Pick a session, stay focused, and log your progress.
+                      </p>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#6b7a99]">
+                        {wtStats.loading ? (
+                          "checking wakatime…"
+                        ) : wtStats.hasKey ? (
+                          <>coded <span className="text-[#e4e1e9] tabular-nums">{(wtStats.totalSeconds / 60).toFixed(0)}m</span> today</>
+                        ) : (
+                          <Link href="/settings/connected-ides" className="underline decoration-dotted hover:text-[#e4e1e9] transition-colors">
+                            connect VS Code to auto-verify
+                          </Link>
+                        )}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="rounded-lg border border-white/[0.08] bg-[#1b1b20] divide-y divide-white/[0.06] overflow-hidden">
-                    {challenges.map((challenge) => {
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                    {challenges.map((challenge, index) => {
                       const isDone = completedToday.includes(challenge.id);
                       const Icon = CHALLENGE_ICONS[challenge.id] ?? IconCode;
 
                       return (
-                        <div
+                        <article
                           key={challenge.id}
                           onClick={() => !isDone && startChallenge(challenge)}
                           className={cn(
-                            "flex flex-col sm:flex-row sm:items-center gap-4 p-5 transition-colors",
-                            isDone ? "opacity-50" : "hover:bg-white/[0.02] cursor-pointer"
+                            "group relative flex min-h-[220px] flex-col justify-between border border-white/[0.08] bg-[#1b1b20]/80 p-5 transition-all duration-300",
+                            "shadow-[inset_0_0_2px_2px_rgba(255,255,255,0.025),inset_0_0_0_1px_rgba(255,255,255,0.025),0_1px_2px_rgba(0,0,0,0.2)]",
+                            isDone ? "opacity-55" : "cursor-pointer hover:border-white/[0.16] hover:bg-white/[0.035]"
                           )}
                         >
-                          {/* Icon */}
-                          <div className="w-10 h-10 rounded-md border border-white/[0.1] bg-white/[0.02] flex items-center justify-center flex-shrink-0 text-[#6b7a99]">
-                            <Icon size={18} />
-                          </div>
-
-                          {/* Title + description */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2.5">
-                              <h3 className="text-sm font-medium truncate">{challenge.title}</h3>
-                              <span className={cn("font-mono text-[10px] uppercase tracking-wider", DIFFICULTY_TEXT[challenge.difficulty])}>
-                                {challenge.difficulty.toLowerCase()}
+                          <div>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6b7a99]">
+                                {String(index + 1).padStart(2, "0")} / focus
                               </span>
-                            </div>
-                            <p className="text-xs text-[#6b7a99] line-clamp-1 mt-0.5">{challenge.description}</p>
-                          </div>
-
-                          {/* Mono meta */}
-                          <div className="flex items-center gap-5 font-mono text-[11px] tabular-nums shrink-0">
-                            <span className="text-[#6b7a99] flex items-center gap-1.5">
-                              <IconClock size={11} /> {challenge.duration}m
-                            </span>
-                            <span className="text-[#e4e1e9]">+{challenge.points}</span>
-                          </div>
-
-                          {/* Action */}
-                          <div className="shrink-0 sm:w-40">
-                            {isDone ? (
-                              <div className="inline-flex items-center justify-center gap-1.5 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-emerald-500/20">
-                                <IconCheck size={13} className="text-emerald-400" />
-                                <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-400">done</span>
+                              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider">
+                                {isDone ? (
+                                  <span className="inline-flex items-center gap-1 text-emerald-400"><IconCheck size={12} /> done</span>
+                                ) : (
+                                  <span className={DIFFICULTY_TEXT[challenge.difficulty]}>{challenge.difficulty.toLowerCase()}</span>
+                                )}
                               </div>
+                            </div>
+
+                            <div className="mt-7 flex items-start gap-3">
+                              <div className="flex size-9 shrink-0 items-center justify-center border border-white/[0.1] bg-white/[0.025] text-[#a6b0c3] transition-colors group-hover:text-[#e4e1e9]">
+                                <Icon size={17} />
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="text-base font-medium leading-snug text-[#e4e1e9]">{challenge.title}</h3>
+                                <p className="mt-1.5 text-xs leading-relaxed text-[#7e8aa3]">{challenge.description}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-7 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-4">
+                            <div className="flex items-center gap-4 font-mono text-[10px] tabular-nums text-[#7e8aa3]">
+                              <span className="inline-flex items-center gap-1.5"><IconClock size={11} /> {challenge.duration}m</span>
+                              <span className="text-[#e4e1e9]">+{challenge.points} pts</span>
+                            </div>
+
+                            {isDone ? (
+                              <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-400">completed</span>
                             ) : wtStats.hasKey && wtStats.totalSeconds >= challenge.duration * 60 ? (
                               <button
                                 onClick={(e) => claimWithWakatime(e, challenge)}
                                 disabled={wtVerifying === challenge.id}
-                                className="inline-flex items-center justify-center gap-2 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-emerald-500/30 text-xs font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                                className="inline-flex items-center justify-center gap-1.5 border border-emerald-500/30 px-2.5 py-2 text-[10px] font-medium text-emerald-400 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 disabled:opacity-50"
                               >
-                                {wtVerifying === challenge.id ? <IconLoader2 size={13} className="animate-spin" /> : <IconShieldCheck size={13} />}
-                                trust wakatime
+                                {wtVerifying === challenge.id ? <IconLoader2 size={12} className="animate-spin" /> : <IconShieldCheck size={12} />}
+                                verify
                               </button>
                             ) : (
-                              <button className="inline-flex items-center justify-center gap-2 h-9 w-full sm:w-auto sm:px-4 rounded-md border border-white/[0.12] text-xs font-medium text-[#e4e1e9] hover:border-white/30 hover:bg-white/[0.04] transition-colors">
-                                <IconPlayerPlay size={12} /> start timer
-                              </button>
+                              <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#e4e1e9] transition-colors group-hover:text-white">
+                                <IconPlayerPlay size={12} /> start session <span aria-hidden="true">↗</span>
+                              </span>
                             )}
                           </div>
-                        </div>
+                        </article>
                       );
                     })}
                   </div>

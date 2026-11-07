@@ -15,7 +15,7 @@ export const NAV_ITEMS = [
   { icon: IconMessageCircle,   label: "Chat",       href: "/chat" },
   { icon: IconUsers,           label: "Discover",   href: "/users" },
   { icon: IconChartBar,        label: "Stats",      href: "/stats" },
-  { icon: IconSettings,        label: "Settings",   href: "#" },
+  { icon: IconSettings,        label: "Connected IDEs", href: "/settings/connected-ides" },
 ];
 
 // Mobile bottom nav is capped at 5 entries to fit small screens;

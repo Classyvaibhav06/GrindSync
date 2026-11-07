@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 import { getCache, setCache } from "@/lib/redis";
+import { getTodayIdeSeconds, hasConnectedIde } from "@/lib/ide/server";
 
 const CACHE_TTL = 30; // 30 seconds for dashboard data
 const DSA_TTL = 86400; // 24 hours for daily challenge
@@ -303,8 +304,13 @@ export async function GET(req: NextRequest) {
         focusData: [], weeklyCommits: 0,
       }),
 
-      // CodeTime
-      codetimeToken ? (async () => {
+      // Coding time: prefer the GrindSync IDE extension, fall back to CodeTime
+      (async () => {
+        const ownerId = new ObjectId(userId);
+        if (await hasConnectedIde(db, ownerId)) {
+          return { totalSecondsToday: await getTodayIdeSeconds(db, ownerId), source: "grindsync-ide" };
+        }
+        if (!codetimeToken) return { error: "NO_CODETIME_KEY" };
         const res = await fetch("https://api.software.com/api/v1/sessions?summary=true", {
           headers: { Authorization: `Bearer ${codetimeToken}`, "Content-Type": "application/json" },
           cache: "no-store",
@@ -314,7 +320,7 @@ export async function GET(req: NextRequest) {
         const data = await res.json();
         const mins = data.sessionSummary?.activeCodeTimeMinutes || data.sessionSummary?.minutes || 0;
         return { totalSecondsToday: mins * 60 };
-      })() : Promise.resolve({ error: "NO_CODETIME_KEY" }),
+      })(),
 
       (async () => {
         const dateKey = todayUTC();

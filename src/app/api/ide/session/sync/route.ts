@@ -22,15 +22,21 @@ export async function POST(req: NextRequest) {
     const device = await getAuthenticatedIdeDevice(req);
     if (!device) return NextResponse.json({ success: false, error: "Unauthorized device" }, { status: 401 });
 
-    const body = await req.json();
-    if (body.deviceId !== device.deviceId || typeof body.batchId !== "string" || !/^[\w-]{1,128}$/.test(body.batchId)) {
+     let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, error: "Malformed JSON body" }, { status: 400 });
+    }
+    const parsed = body as { deviceId?: unknown; batchId?: unknown; intervals?: unknown; batchIdAsAny?: unknown };
+    if (parsed.deviceId !== device.deviceId || typeof parsed.batchId !== "string" || !/^[\w-]{1,128}$/.test(parsed.batchId)) {
       return NextResponse.json({ success: false, error: "Invalid batch or device ID" }, { status: 400 });
     }
-    if (!Array.isArray(body.intervals) || body.intervals.length > 500) {
+    if (!Array.isArray(parsed.intervals) || parsed.intervals.length > 500) {
       return NextResponse.json({ success: false, error: "Invalid activity intervals" }, { status: 400 });
     }
 
-    const intervals: IncomingInterval[] = body.intervals;
+    const intervals: IncomingInterval[] = parsed.intervals;
     let totalActiveSeconds = 0;
     const languageBreakdown: Record<string, number> = {};
     const safeIntervals = [];
@@ -73,9 +79,9 @@ export async function POST(req: NextRequest) {
       await db.collection("ide_activity_batches").insertOne({
         userId: new ObjectId(String(device.userId)),
         deviceId: device.deviceId,
-        batchId: body.batchId,
-        sessionId: typeof body.sessionId === "string" ? body.sessionId.slice(0, 128) : "",
-        clientTimestamp: isFiniteNumber(body.clientTimestamp) ? body.clientTimestamp : now,
+        batchId: parsed.batchId as string,
+        sessionId: typeof (parsed as { sessionId?: unknown }).sessionId === "string" ? ((parsed as { sessionId: string }).sessionId).slice(0, 128) : "",
+        clientTimestamp: isFiniteNumber((parsed as { clientTimestamp?: unknown }).clientTimestamp) ? ((parsed as { clientTimestamp: number }).clientTimestamp) : now,
         receivedAt: new Date(),
         intervals: safeIntervals,
         languageBreakdown,

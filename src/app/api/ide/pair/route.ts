@@ -9,10 +9,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Too many pairing attempts. Try again in a minute." }, { status: 429 });
     }
 
-    const body = await req.json();
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    const deviceName = typeof body.deviceName === "string" ? body.deviceName.trim().slice(0, 100) : "";
-    const ide = typeof body.ide === "string" ? body.ide.trim().slice(0, 40) : "VS Code";
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, error: "Malformed JSON body" }, { status: 400 });
+    }
+    const code = typeof (body as { code?: unknown })?.code === "string" ? (body as { code: string }).code.trim() : "";
+    const deviceName = typeof (body as { deviceName?: unknown })?.deviceName === "string" ? (body as { deviceName: string }).deviceName.trim().slice(0, 100) : "";
+    const ide = typeof (body as { ide?: unknown })?.ide === "string" ? (body as { ide: string }).ide.trim().slice(0, 40) : "VS Code";
     if (!/^\d{6}$/.test(code) || !deviceName) {
       return NextResponse.json({ success: false, error: "Enter a valid 6-digit pairing code and device name." }, { status: 400 });
     }

@@ -140,7 +140,7 @@ export function AppShell({
             <span className="text-sm sm:text-base font-bold text-[#e4e1e9] truncate">{title}</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <ThemeToggle className="hidden sm:inline-flex" />
+            <ThemeToggle />
             <NotificationBell />
             <Link href={`/profile/${userId}`}>
               <ShellAvatar userId={userId} sessionImage={userImage} userName={userName} />

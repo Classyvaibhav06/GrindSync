@@ -12,6 +12,7 @@ import {
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LandingPage() {
   const navItems = [
@@ -26,6 +27,7 @@ export default function LandingPage() {
       <div className="absolute inset-0 bg-grid-white/[0.02] pointer-events-none" />
       <div className="absolute inset-0 mask-radial-faded pointer-events-none" />
       <FloatingNav navItems={navItems} />
+      <div className="absolute top-4 right-4 z-[60] sm:top-6 sm:right-6"><ThemeToggle /></div>
       
       {/* Hero Section */}
       <div className="h-[40rem] w-full rounded-md flex md:items-center md:justify-center relative overflow-hidden">

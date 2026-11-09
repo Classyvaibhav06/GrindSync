@@ -33,8 +33,21 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# OmniRush API — local only, do NOT push to GitHub
+/src/lib/omnirush/
+/src/app/api/omnirush/
+/docs/OMNIRUSH_API.md
+/.env.example
+/.omnirush*/
+**/tokens.json
+tokens.json
+
 # vercel
 .vercel
+
+# cloudflare opennext
+.open-next
+.wrangler
 
 # typescript
 *.tsbuildinfo

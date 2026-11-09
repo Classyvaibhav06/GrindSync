@@ -1,0 +1,12 @@
+name = "socialgrind"
+compatibility_date = "2026-11-08"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_v2"]
+main = ".open-next/worker.js"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Observability — see all Worker logs in the Cloudflare dashboard
+[observability]
+enabled = true
